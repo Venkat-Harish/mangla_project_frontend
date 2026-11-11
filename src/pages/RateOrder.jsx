@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Button, Card, Empty, Image, ImageUploader, NavBar, Rate, TextArea, Toast } from 'antd-mobile'
+import { Button, Card, Empty, Image, ImageUploader, NavBar, Rate, Switch, TextArea, Toast } from 'antd-mobile'
 import { kitchenById } from '../services/api.js'
 import { useAuth, useMyReviews, useOrders } from '../store/index.js'
 import { shrinkImage } from '../lib/format.js'
 
 const LABELS = ['', 'Not for me', 'Could be better', 'Good', 'Really good', 'Loved it']
+const label = (v) => (!v ? '' : v % 1 ? `${LABELS[Math.ceil(v)]} · ${v}` : LABELS[v])
 
 export default function RateOrder() {
   const { id } = useParams()
@@ -17,6 +18,7 @@ export default function RateOrder() {
   const [stars, setStars] = useState({})
   const [comment, setComment] = useState('')
   const [photos, setPhotos] = useState([])
+  const [anonymous, setAnonymous] = useState(false)
 
   if (!order) return <><NavBar onBack={() => navigate(-1)}>Rate your food</NavBar><Empty description="Order not found" /></>
   const k = kitchenById(order.kitchenId)
@@ -26,7 +28,9 @@ export default function RateOrder() {
     const createdAt = Date.now()
     addReviews(order.lines.map((l, n) => ({
       id: `${order.id}-${l.itemId}`, kitchenId: k.id, orderId: order.id, itemName: l.name,
-      userName: user.name.replace(/(\w+)\s+(\w)\w*/, '$1 $2.'), flat: user.flat,
+      ...(anonymous
+        ? { anonymous: true, userName: 'Anonymous neighbour' }
+        : { userName: user.name.replace(/(\w+)\s+(\w)\w*/, '$1 $2.'), flat: user.flat }),
       rating: stars[l.itemId], comment, photos: n === 0 ? photos.map((p) => p.url) : [], createdAt,
     })))
     markRated(order.id)
@@ -52,10 +56,10 @@ export default function RateOrder() {
               <Image src={l.photo} width={48} height={48} fit="cover" style={{ borderRadius: 10 }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600 }}>{l.name}</div>
-                <div className="muted" style={{ fontSize: 12, minHeight: 16 }}>{LABELS[stars[l.itemId] ?? 0]}</div>
+                <div className="muted" style={{ fontSize: 12, minHeight: 16 }}>{label(stars[l.itemId])}</div>
               </div>
             </div>
-            <Rate value={stars[l.itemId] ?? 0} onChange={(v) => setStars((s) => ({ ...s, [l.itemId]: v }))} style={{ '--star-size': '32px', marginTop: 10 }} />
+            <Rate allowHalf value={stars[l.itemId] ?? 0} onChange={(v) => setStars((s) => ({ ...s, [l.itemId]: v }))} style={{ '--star-size': '32px', marginTop: 10 }} />
           </Card>
         ))}
 
@@ -65,6 +69,16 @@ export default function RateOrder() {
 
         <Card title="Add photos">
           <ImageUploader value={photos} onChange={setPhotos} maxCount={4} upload={async (file) => ({ url: await shrinkImage(file) })} />
+        </Card>
+
+        <Card>
+          <div className="row between" style={{ gap: 12 }} onClick={() => setAnonymous((a) => !a)}>
+            <div>
+              <div style={{ fontWeight: 600 }}>Post anonymously</div>
+              <div className="muted" style={{ fontSize: 12 }}>Your name and flat won’t be shown</div>
+            </div>
+            <Switch checked={anonymous} style={{ pointerEvents: 'none' }} />
+          </div>
         </Card>
 
         <Button block size="large" color="primary" disabled={!ready} onClick={submit}>Post review</Button>

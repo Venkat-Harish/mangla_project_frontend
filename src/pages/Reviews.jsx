@@ -45,7 +45,7 @@ export default function Reviews() {
                 <div key={i} className="row" style={{ gap: 8 }}>
                   <span className="mono muted" style={{ width: 10, fontSize: 12 }}>{5 - i}</span>
                   <ProgressBar percent={s.count ? (n / s.count) * 100 : 0} style={{ flex: 1, '--track-width': '6px', '--fill-color': 'var(--turmeric)', '--track-color': 'var(--paper-deep)' }} />
-                  <span className="mono faint" style={{ width: 28, fontSize: 12, textAlign: 'right' }}>{n}</span>
+                  <span className="mono faint" style={{ width: 28, fontSize: 12, textAlign: 'right' }}>{Math.round(n)}</span>
                 </div>
               ))}
             </div>

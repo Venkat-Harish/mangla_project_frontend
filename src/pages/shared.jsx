@@ -24,16 +24,16 @@ export function ReviewItem({ review, kitchenName, onKitchen }) {
       )}
       <div className="row between" style={{ alignItems: 'flex-start' }}>
         <div className="row" style={{ gap: 10 }}>
-          <Avatar src="" fallback={<span className="avatar-initials leaf">{initials(review.userName)}</span>} style={{ '--size': '36px', '--border-radius': '50%' }} />
+          <Avatar src="" fallback={<span className="avatar-initials leaf">{review.anonymous ? '?' : initials(review.userName)}</span>} style={{ '--size': '36px', '--border-radius': '50%' }} />
           <div>
-            <div style={{ fontWeight: 600 }}>{review.userName}</div>
-            <div className="mono muted" style={{ fontSize: 12 }}>{review.flat}</div>
+            <div style={{ fontWeight: 600 }}>{review.anonymous ? 'Anonymous neighbour' : review.userName}</div>
+            {!review.anonymous && <div className="mono muted" style={{ fontSize: 12 }}>{review.flat}</div>}
           </div>
         </div>
         <span className="mono muted" style={{ fontSize: 12 }}>{dateTime(review.createdAt)}</span>
       </div>
       <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-        <Rate readOnly value={review.rating} style={{ '--star-size': '13px' }} />
+        <Rate readOnly allowHalf value={review.rating} style={{ '--star-size': '13px' }} />
         <Tag round fill="outline" color="default" style={{ '--text-color': 'var(--ink-2)' }}>{review.itemName}</Tag>
       </div>
       {review.comment && <p style={{ margin: '10px 0 0', fontSize: 14, lineHeight: '20px' }}>{review.comment}</p>}

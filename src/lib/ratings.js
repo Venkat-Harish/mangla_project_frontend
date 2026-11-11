@@ -17,7 +17,12 @@ const allDishes = (kitchen) => [...(kitchen?.items ?? []), ...(kitchen?.offMenu 
 function dishDist(kitchen, dishName, myReviews) {
   const base = allDishes(kitchen).find((d) => d.name === dishName)?.ratings ?? EMPTY
   const dist = [...base]
-  myReviews.filter((r) => r.kitchenId === kitchen.id && r.itemName === dishName).forEach((r) => { dist[5 - r.rating] += 1 })
+  myReviews.filter((r) => r.kitchenId === kitchen.id && r.itemName === dishName).forEach((r) => {
+    // Half stars (e.g. 4.5) split evenly between the two neighbouring buckets so the average stays exact.
+    const lo = Math.floor(r.rating), hi = Math.ceil(r.rating)
+    if (lo === hi) dist[5 - lo] += 1
+    else { dist[5 - hi] += 0.5; dist[5 - lo] += 0.5 }
+  })
   return dist
 }
 
