@@ -16,14 +16,17 @@ export default function Settings() {
   const logout = useAuth((s) => s.logout)
   const myReviews = useMyReviews((s) => s.reviews)
   const orders = useOrders((s) => s.orders)
-  const { canPrompt, install, isIOS, standalone } = useInstallPrompt()
+  const { canPrompt, install, isIOS, isAndroid, standalone } = useInstallPrompt()
   const [iosSteps, setIosSteps] = useState(false)
+  const [androidSteps, setAndroidSteps] = useState(false)
   const { kitchen, mode, setMode } = useMyKitchen()
   const { theme, setTheme } = usePrefs()
 
   const onInstall = async () => {
+    if (standalone) return Toast.show({ content: `${APP_NAME} is already installed` })
     if (canPrompt) return install()
     if (isIOS) return setIosSteps(true)
+    if (isAndroid) return setAndroidSteps(true)
     Toast.show({ content: 'Open this page in Chrome on Android, or Safari on iPhone, to install.' })
   }
 
@@ -115,6 +118,19 @@ export default function Settings() {
             <Steps.Step status="process" title="Tap Add" description={<span className="row" style={{ gap: 4 }}>Open {APP_NAME} from its icon <SendOutline /></span>} />
           </Steps>
           <Button block color="primary" size="large" onClick={() => setIosSteps(false)}>Got it</Button>
+        </div>
+      </Popup>
+
+      <Popup visible={androidSteps} onMaskClick={() => setAndroidSteps(false)} showCloseButton onClose={() => setAndroidSteps(false)}>
+        <div style={{ padding: '24px 20px 36px' }}>
+          <h2 className="h1">Install {APP_NAME} from Chrome</h2>
+          <p className="muted">Chrome didn’t offer the install pop-up this time, so add it from the menu:</p>
+          <Steps direction="vertical" current={3}>
+            <Steps.Step status="process" title="Tap ⋮" description="The three-dot menu at the top right of Chrome" />
+            <Steps.Step status="process" title="Choose “Install app”" description="On some phones it’s called “Add to Home screen”" />
+            <Steps.Step status="process" title="Tap Install" description={<span className="row" style={{ gap: 4 }}>Open {APP_NAME} from its icon <SendOutline /></span>} />
+          </Steps>
+          <Button block color="primary" size="large" onClick={() => setAndroidSteps(false)}>Got it</Button>
         </div>
       </Popup>
     </div>

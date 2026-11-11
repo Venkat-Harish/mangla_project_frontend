@@ -20,21 +20,37 @@ export function useQuery(key, fn) {
 }
 
 // Android/desktop Chrome: capture the native install prompt. iOS: no prompt, show steps instead.
+// Chrome fires `beforeinstallprompt` once, right after page load — usually before the user
+// reaches Settings — so we catch it at module load (imported from main.jsx) and keep it here.
+let deferredPrompt = null
+const installListeners = new Set()
+const notifyInstall = () => installListeners.forEach((fn) => fn(deferredPrompt))
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; notifyInstall() })
+  window.addEventListener('appinstalled', () => { deferredPrompt = null; notifyInstall() })
+}
+
 export function useInstallPrompt() {
-  const [promptEvent, setPromptEvent] = useState(null)
+  const [promptEvent, setPromptEvent] = useState(deferredPrompt)
   const standalone = typeof window !== 'undefined' &&
     (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)
-  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent)
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isIOS = /iphone|ipad|ipod/i.test(ua)
+  const isAndroid = /android/i.test(ua)
   useEffect(() => {
-    const onPrompt = (e) => { e.preventDefault(); setPromptEvent(e) }
-    window.addEventListener('beforeinstallprompt', onPrompt)
-    return () => window.removeEventListener('beforeinstallprompt', onPrompt)
+    setPromptEvent(deferredPrompt)
+    installListeners.add(setPromptEvent)
+    return () => { installListeners.delete(setPromptEvent) }
   }, [])
   const install = async () => {
-    if (!promptEvent) return false
-    promptEvent.prompt(); await promptEvent.userChoice; setPromptEvent(null); return true
+    const evt = deferredPrompt
+    if (!evt) return false
+    evt.prompt()
+    const choice = await evt.userChoice
+    deferredPrompt = null; notifyInstall()
+    return choice?.outcome === 'accepted'
   }
-  return { canPrompt: !!promptEvent, install, isIOS, standalone }
+  return { canPrompt: !!promptEvent, install, isIOS, isAndroid, standalone }
 }
 
 // Applies Light / Dark / System to <html> (our tokens + antd-mobile's own dark flag + status bar colour).

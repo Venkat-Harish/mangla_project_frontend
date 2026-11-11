@@ -10,6 +10,7 @@ import '@fontsource/dm-sans/700.css'
 import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
 import './styles/theme.css'
+import './hooks/index.js' // attaches the beforeinstallprompt listener at boot
 import App from './App.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
