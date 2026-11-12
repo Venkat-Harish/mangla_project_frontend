@@ -4,7 +4,7 @@ import { CheckCircleFill, ClockCircleOutline, EnvironmentOutline } from 'antd-mo
 import { useNow } from '../hooks/index.js'
 import { kitchenById } from '../services/api.js'
 import { ACCEPTED, PICKED, READY, STATUSES, isRejected, statusIndex, stepTime, useOrders } from '../store/index.js'
-import { clock, rupees } from '../lib/format.js'
+import { clock, ownerFirst, pickupPlace, rupees } from '../lib/format.js'
 import { statusColor, statusTagStyle } from './Orders.jsx'
 
 const NOTES = [
@@ -26,7 +26,7 @@ export default function OrderDetail() {
   const k = kitchenById(order.kitchenId)
   const i = statusIndex(order, now)
   const rejected = isRejected(order)
-  const first = k.owner.split(' ')[0]
+  const first = ownerFirst(k)
   // Orders to a kitchen run in this app wait for the cook's actions.
   const note = order.cookLinked && i === 0 ? `Waiting for ${first} to accept.` : NOTES[i]
   const readyBy = Math.max(...order.lines.map((l) => l.readyAt))
@@ -64,7 +64,7 @@ export default function OrderDetail() {
         {i === READY && !rejected && (
           <>
             <NoticeBar color="info" wrap icon={<EnvironmentOutline />}
-              content={<span>Ready at <b>Flat {k.flat}</b>, Block {k.block}. Show pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
+              content={<span>Ready at <b>{pickupPlace(k) ?? k.name}</b>. Show pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
             <Button block size="large" color="success" onClick={() => pickUp(order.id)}>I’ve picked it up</Button>
           </>
         )}
@@ -104,8 +104,8 @@ export default function OrderDetail() {
         </List>
 
         <List mode="card" header="Pickup from" style={{ margin: 0 }}>
-          <List.Item prefix={<EnvironmentOutline />} description={`Block ${k.block} · ${k.owner}`} arrow onClick={() => navigate(`/kitchen/${k.id}`)}>
-            {k.name}, Flat {k.flat}
+          <List.Item prefix={<EnvironmentOutline />} description={[pickupPlace(k), k.owner].filter(Boolean).join(' · ')} arrow onClick={() => navigate(`/kitchen/${k.id}`)}>
+            {k.name}
           </List.Item>
         </List>
 

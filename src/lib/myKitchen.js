@@ -3,12 +3,15 @@
 // page (Home, Kitchen, Cart, Orders, Reviews) works with it unchanged.
 import { useMemo } from 'react'
 import { useAuth, useMyKitchen } from '../store/index.js'
-import { STORY_TTL_MS, coverOf, dishStats, useCook } from '../store/cook.js'
+import { STORY_TTL_MS, coverOf, dishStats, newMediaId, useCook } from '../store/cook.js'
+import { cookById, photosOf } from '../data/cooks.js'
 
 export const isMyKitchenId = (id) => !!id && useMyKitchen.getState().kitchen?.id === id
 
 export function buildBuyerKitchen(kitchen, user, dishes, incoming, now = Date.now()) {
   if (!kitchen || !user) return null
+  // Pilot kitchens carry their owner / cuisine / pickup details from src/data/cooks.js.
+  const pilot = cookById(kitchen.id)
   const anyCover = dishes.map(coverOf).find(Boolean)
   const items = dishes.filter((d) => d.live).map((d) => {
     const s = dishStats(d, incoming)
@@ -27,14 +30,14 @@ export function buildBuyerKitchen(kitchen, user, dishes, incoming, now = Date.no
   })
   return {
     id: kitchen.id, mine: true,
-    name: kitchen.name, owner: user.name, phone: kitchen.phone,
-    block: user.block, flat: user.flat,
-    cuisine: 'Home kitchen',
-    about: `Home cooking from ${user.flat}. Call ${kitchen.phone} about pickups.`,
+    name: kitchen.name, owner: pilot?.owner ?? user.name, phone: kitchen.phone,
+    block: pilot ? pilot.block : user.block, flat: pilot ? pilot.flat : user.flat,
+    cuisine: pilot?.cuisine ?? 'Home kitchen',
+    about: pilot?.about ?? `Home cooking from ${user.flat}. Call ${kitchen.phone} about pickups.`,
     cover: items[0]?.photo ?? anyCover ?? kitchen.logo,
     thumb: kitchen.logo,
     rating: { avg: 0, count: 0, dist: [0, 0, 0, 0, 0] },
-    nextOpen: 'Opens later',
+    nextOpen: pilot && !dishes.length ? 'Menu coming soon' : 'Opens later',
     items,
     // dishes on your menu that aren't live — buyers see them greyed with "Notify me"
     offMenu: dishes.filter((d) => !d.live).map((d) => ({
@@ -43,6 +46,24 @@ export function buildBuyerKitchen(kitchen, user, dishes, incoming, now = Date.no
     })),
     hasDishes: dishes.length > 0,
   }
+}
+
+// A pilot kitchen's menu (src/data/cooks.js) is added to Cook mode once per dish name,
+// so dishes added to the file later still show up, and dishes the cook deleted stay deleted.
+export function seedPilotMenu() {
+  const { kitchen, update } = useMyKitchen.getState()
+  const menu = cookById(kitchen?.id)?.menu ?? []
+  const seeded = kitchen?.seededDishes ?? []
+  const { addDish, updateDish, dishes } = useCook.getState()
+  // A price added to the file later fills in dishes the cook hasn't priced yet.
+  dishes.forEach((d) => {
+    const price = d.price == null ? menu.find((m) => m.name === d.name)?.price : null
+    if (price != null) updateDish(d.id, { price })
+  })
+  const fresh = menu.filter((d) => !seeded.includes(d.name))
+  if (!fresh.length) return
+  fresh.forEach((d) => addDish({ name: d.name, desc: d.desc ?? '', price: d.price ?? null, media: photosOf(d).map((url) => ({ id: newMediaId(), type: 'image', url })) }))
+  update({ seededDishes: [...seeded, ...fresh.map((d) => d.name)] })
 }
 
 // Reactive version for pages.

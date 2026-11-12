@@ -100,7 +100,7 @@ function StoryViewer({ groups, index, onIndex }) {
             <Avatar src={group.kitchen.thumb} style={{ '--size': '34px', '--border-radius': '50%' }} />
             <div>
               <div style={{ fontWeight: 600 }}>{group.kitchen.name}</div>
-              <div style={{ fontSize: 12, opacity: 0.8 }}>Block {group.kitchen.block} · {timeAgo(group.slides[slide]?.at ?? group.slides[0].at)}</div>
+              <div style={{ fontSize: 12, opacity: 0.8 }}>{group.kitchen.block ? `Block ${group.kitchen.block} · ` : ''}{timeAgo(group.slides[slide]?.at ?? group.slides[0].at)}</div>
             </div>
           </div>
           <button className="story-close" onClick={close} aria-label="Close"><CloseOutline fontSize={26} /></button>

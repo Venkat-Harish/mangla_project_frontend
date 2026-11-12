@@ -7,7 +7,7 @@ import { kitchenById } from '../services/api.js'
 import { useAuth, useCart, useOrders } from '../store/index.js'
 import { useCook } from '../store/cook.js'
 import SlideToConfirm from './SlideToConfirm.jsx'
-import { clock, dayLabel, rupees } from '../lib/format.js'
+import { clock, dayLabel, ownerFirst, pickupPlace, rupees } from '../lib/format.js'
 
 export default function Cart() {
   const navigate = useNavigate()
@@ -58,7 +58,7 @@ export default function Cart() {
       <List mode="card" style={{ margin: '0 16px' }}>
         <List.Item
           prefix={<Image src={kitchen.thumb} width={44} height={44} fit="cover" style={{ borderRadius: 10 }} />}
-          description={`by ${kitchen.owner}`} arrow onClick={() => navigate(`/kitchen/${kitchen.id}`)}
+          description={kitchen.owner ? `by ${kitchen.owner}` : kitchen.cuisine} arrow onClick={() => navigate(`/kitchen/${kitchen.id}`)}
         >
           <span className="h3">{kitchen.name}</span>
         </List.Item>
@@ -85,12 +85,12 @@ export default function Cart() {
 
       <List mode="card" header="Note for the cook" style={{ margin: '12px 16px 0' }}>
         <List.Item>
-          <TextArea placeholder={`e.g. less spicy, bring my own box — ${kitchen.owner.split(' ')[0]} will see this`} value={cart.note} onChange={cart.setNote} autoSize={{ minRows: 2, maxRows: 4 }} maxLength={140} showCount />
+          <TextArea placeholder={`e.g. less spicy, bring my own box — ${ownerFirst(kitchen)} will see this`} value={cart.note} onChange={cart.setNote} autoSize={{ minRows: 2, maxRows: 4 }} maxLength={140} showCount />
         </List.Item>
       </List>
 
       <List mode="card" header="Pickup" style={{ margin: '12px 16px 0' }}>
-        <List.Item prefix={<EnvironmentOutline />} description={`Block ${kitchen.block}, ${user.society}`}>Flat {kitchen.flat}</List.Item>
+        <List.Item prefix={<EnvironmentOutline />} description={pickupPlace(kitchen) ? user.society : `${kitchen.phone ? `Call ${kitchen.phone} · ` : ''}${user.society}`}>{pickupPlace(kitchen) ?? kitchen.name}</List.Item>
         <List.Item prefix={<ClockCircleOutline />} description="We’ll notify you the moment it’s ready">
           Ready by <span className="mono">{dayLabel(readyBy, now).toLowerCase()} {clock(readyBy)}</span>
         </List.Item>

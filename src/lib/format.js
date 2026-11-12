@@ -1,6 +1,7 @@
 import { CLOSING_SOON_MIN } from '../config.js'
 
-export const rupees = (n) => '₹' + n.toLocaleString('en-IN')
+// null = the cook hasn't set a price yet.
+export const rupees = (n) => (n == null ? 'Price soon' : '₹' + n.toLocaleString('en-IN'))
 
 export const clock = (t) => new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase()
 
@@ -51,4 +52,13 @@ export function shrinkImage(file, max = 720) {
     img.onerror = reject
     img.src = URL.createObjectURL(file)
   })
+}
+
+// Kitchen owner's first name for chatty copy ("Tell Mouni what you'd like"); falls back to the kitchen name.
+export const ownerFirst = (k) => k?.owner?.split(' ')[0] || k?.name || 'the cook'
+
+// Where to pick up, e.g. "Flat C-304, Block C". Pilot kitchens may not have a flat yet.
+export function pickupPlace(k) {
+  if (!k?.flat) return null
+  return k.block ? `Flat ${k.flat}, Block ${k.block}` : `Flat ${k.flat}`
 }

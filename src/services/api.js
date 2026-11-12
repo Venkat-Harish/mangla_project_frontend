@@ -23,5 +23,5 @@ export const api = {
 }
 
 // Synchronous lookup for places that already hold an id (cart, orders).
-// Includes your own kitchen (cook mode) so cart/orders/reviews work for it too.
-export const kitchenById = (id) => kitchens.find((k) => k.id === id) ?? (isMyKitchenId(id) ? myBuyerKitchenNow() : null)
+// Your own kitchen (cook mode) wins over its listed entry, so buyers see your live menu.
+export const kitchenById = (id) => (isMyKitchenId(id) ? myBuyerKitchenNow() : null) ?? kitchens.find((k) => k.id === id) ?? null

@@ -44,7 +44,7 @@ export default function Settings() {
         <Avatar src="" fallback={<span className="avatar-initials" style={{ fontSize: 22 }}>{user.initials}</span>} style={{ '--size': '64px', '--border-radius': '50%' }} />
         <div>
           <h1 className="h1">{user.name}</h1>
-          <div className="mono muted" style={{ fontSize: 13 }}>{user.flat} · Block {user.block}</div>
+          {user.flat && <div className="mono muted" style={{ fontSize: 13 }}>{user.flat}{user.block ? ` · Block ${user.block}` : ''}</div>}
           <Tag round color="success" fill="outline" style={{ marginTop: 6 }}>
             <span className="row" style={{ gap: 4 }}><CheckShieldOutline /> Verified resident</span>
           </Tag>
@@ -52,8 +52,8 @@ export default function Settings() {
       </div>
 
       <List mode="card" header="Your society" style={{ margin: '20px 16px 0' }}>
-        <List.Item prefix={<EnvironmentOutline />} description={`Flat ${user.flat}`}>{user.society}</List.Item>
-        <List.Item prefix={<PhonebookOutline />} description={`Signed in with ${user.via === 'mygate' ? 'MyGate' : user.via === 'google' ? 'Google' : 'phone'}`}>{user.phone}</List.Item>
+        <List.Item prefix={<EnvironmentOutline />} description={user.flat ? `Flat ${user.flat}` : null}>{user.society}</List.Item>
+        <List.Item prefix={<PhonebookOutline />} description="Signed in with phone">{user.phone}</List.Item>
       </List>
 
       {kitchen ? (

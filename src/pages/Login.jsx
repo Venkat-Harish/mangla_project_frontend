@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { Button, Form, Grid, Image, Input, NoticeBar, PasscodeInput, Popup, Toast } from 'antd-mobile'
-import { CheckShieldOutline, MailOutline, PhonebookOutline } from 'antd-mobile-icons'
+import { PhonebookOutline } from 'antd-mobile-icons'
 import { APP_TAGLINE, APP_WORDMARK } from '../config.js'
 import { kitchens } from '../data/mock.js'
-import { PROVIDERS, requestOtp, verifyOtp } from '../services/auth.js'
-import { useAuth } from '../store/index.js'
+import { requestOtp, tenDigits, verifyOtp } from '../services/auth.js'
+import { useAuth, useMyKitchen } from '../store/index.js'
+import { useCook } from '../store/cook.js'
+import { seedPilotMenu } from '../lib/myKitchen.js'
+
+// Keep 10 digits; tolerate spaces and a pasted +91 / 91 prefix.
+const phoneDigits = (v) => { const d = v.replace(/\D/g, ''); return d.length > 10 && d.startsWith('91') ? d.slice(-10) : d.slice(0, 10) }
 
 export default function Login() {
   const login = useAuth((s) => s.login)
-  const [provider, setProvider] = useState(null)
   const [phoneOpen, setPhoneOpen] = useState(false)
   const [phone, setPhone] = useState('')
   const [otpOpen, setOtpOpen] = useState(false)
@@ -17,9 +21,9 @@ export default function Login() {
   const [error, setError] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const start = async (p, contact) => {
-    setBusy(true); setProvider(p)
-    const res = await requestOtp(p, contact)
+  const start = async () => {
+    setBusy(true)
+    const res = await requestOtp(phone)
     setBusy(false); setSentTo(res.sentTo); setCode(''); setError(false); setPhoneOpen(false); setOtpOpen(true)
   }
 
@@ -27,7 +31,15 @@ export default function Login() {
     if (value.length < 6) return
     setBusy(true)
     try {
-      const user = await verifyOtp(provider, value, phone)
+      const { user, kitchen } = await verifyOtp(value, phone)
+      if (kitchen) {
+        // A pilot cook: open their own kitchen in Cook mode.
+        const mine = useMyKitchen.getState()
+        if (mine.kitchen?.id === kitchen.id) mine.update(kitchen)
+        else { useCook.getState().clearAll(); mine.register(kitchen) }
+        mine.setMode('cook')
+        seedPilotMenu()
+      }
       Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
       login(user)
     } catch (e) {
@@ -42,20 +54,14 @@ export default function Login() {
       <p className="italic muted" style={{ fontSize: 18, lineHeight: '24px', margin: 0, maxWidth: 280 }}>{APP_TAGLINE}</p>
 
       <Grid columns={3} gap={10} style={{ margin: '28px 0' }}>
-        {kitchens.slice(0, 3).map((k) => (
-          <Grid.Item key={k.id}><Image src={k.thumb} fit="cover" height={92} style={{ borderRadius: 14 }} /></Grid.Item>
+        {kitchens.slice(0, 6).map((k) => (
+          <Grid.Item key={k.id}><Image src={k.thumb} fit="cover" style={{ aspectRatio: '1', borderRadius: 14 }} /></Grid.Item>
         ))}
       </Grid>
 
       <div className="caps" style={{ marginBottom: 12 }}>Sign in to your society</div>
       <div className="stack">
-        <Button block size="large" color="primary" loading={busy && provider === 'mygate'} onClick={() => start('mygate')}>
-          <span className="row" style={{ justifyContent: 'center' }}><CheckShieldOutline /> Continue with MyGate</span>
-        </Button>
-        <Button block size="large" onClick={() => start('google')} loading={busy && provider === 'google'}>
-          <span className="row" style={{ justifyContent: 'center' }}><MailOutline /> Continue with Google</span>
-        </Button>
-        <Button block size="large" onClick={() => setPhoneOpen(true)}>
+        <Button block size="large" color="primary" onClick={() => setPhoneOpen(true)}>
           <span className="row" style={{ justifyContent: 'center' }}><PhonebookOutline /> Continue with phone</span>
         </Button>
       </div>
@@ -70,19 +76,19 @@ export default function Login() {
           <p className="muted" style={{ marginTop: 6 }}>Use the number registered with your society office. We’ll text a 6-digit code.</p>
           <Form layout="horizontal" style={{ '--border-top': 'none', '--border-bottom': 'none', margin: '8px -12px' }}>
             <Form.Item label="+91">
-              <Input type="tel" inputMode="numeric" maxLength={10} placeholder="98765 43210" value={phone} onChange={setPhone} clearable autoFocus />
+              <Input type="tel" inputMode="numeric" placeholder="98765 43210" value={phone} onChange={(v) => setPhone(phoneDigits(v))} clearable autoFocus />
             </Form.Item>
           </Form>
-          <Button block size="large" color="primary" disabled={phone.replace(/\D/g, '').length !== 10} loading={busy} onClick={() => start('phone', phone)}>
+          <Button block size="large" color="primary" disabled={tenDigits(phone).length !== 10} loading={busy} onClick={start}>
             Send code
           </Button>
         </div>
       </Popup>
 
-      {/* OTP — temporary until MyGate login goes live */}
+      {/* OTP — prototype: always 123456 */}
       <Popup visible={otpOpen} onMaskClick={() => setOtpOpen(false)} showCloseButton onClose={() => setOtpOpen(false)} destroyOnClose>
         <div style={{ padding: '24px 20px 32px' }} className="stack">
-          <div className="caps">Via {provider && PROVIDERS[provider].label}</div>
+          <div className="caps">Via SMS</div>
           <h2 className="h1">Enter the 6-digit code</h2>
           <p className="muted" style={{ margin: 0 }}>Sent to {sentTo}.</p>
           <PasscodeInput
