@@ -6,7 +6,7 @@ import { APP_WORDMARK } from '../config.js'
 import { useNow, useQuery } from '../hooks/index.js'
 import { api, kitchenById } from '../services/api.js'
 import { PICKED, READY, STATUSES, isRejected, statusIndex, useAuth, useMyReviews, useOrders, usePins } from '../store/index.js'
-import { clock } from '../lib/format.js'
+import { clock, pickupPlace } from '../lib/format.js'
 import { kitchenRating } from '../lib/ratings.js'
 import { useNotify } from '../store/notify.js'
 import { StoryRow, keepTouch } from './stories.jsx'
@@ -26,9 +26,12 @@ export default function Home() {
   const pins = usePins((s) => s.pins)
   const togglePin = usePins((s) => s.toggle)
   // Pinned kitchens first (most recently pinned first), then your kitchen, then the rest.
+  // A pilot cook's kitchen is already listed — your live version replaces that entry.
   const kitchens = useMemo(() => {
     if (!mockKitchens) return null
-    const list = [...(myKitchen?.hasDishes ? [myKitchen] : []), ...mockKitchens]
+    const listed = myKitchen && mockKitchens.some((k) => k.id === myKitchen.id)
+    const others = mockKitchens.filter((k) => k.id !== myKitchen?.id)
+    const list = [...(myKitchen && (listed || myKitchen.hasDishes) ? [myKitchen] : []), ...others]
     const pinnedList = list.filter((k) => pins[k.id]).sort((a, b) => pins[b.id] - pins[a.id])
     return [...pinnedList, ...list.filter((k) => !pins[k.id])]
   }, [mockKitchens, myKitchen, pins])
@@ -74,7 +77,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="pad row muted" style={{ gap: 4, fontSize: 12, marginTop: 4 }}><EnvironmentOutline /> {user.society} · {user.flat}</div>
+      <div className="pad row muted" style={{ gap: 4, fontSize: 12, marginTop: 4 }}><EnvironmentOutline /> {user.society}{user.flat ? ` · ${user.flat}` : ''}</div>
 
       {alerts.map((a) => (
         <div key={a.key} className="pad" style={{ marginTop: 10 }}>
@@ -162,7 +165,7 @@ export default function Home() {
                           <span className="mono" style={{ fontSize: 12 }}>{rs.avg.toFixed(1)}</span>
                         </div>
                       ) : <div className="row" style={{ marginTop: 6 }}><Tag round fill="outline" color="default" style={{ '--text-color': 'var(--ink-2)' }}>New</Tag></div> })()}
-                      <div className="mono faint" style={{ fontSize: 12, marginTop: 2 }}>Block {k.block} · {k.flat}</div>
+                      {pickupPlace(k) && <div className="mono faint" style={{ fontSize: 12, marginTop: 2 }}>{pickupPlace(k)}</div>}
                     </div>
                   </Card>
                 </Grid.Item>

@@ -11,6 +11,15 @@ import '@fontsource/dm-mono/400.css'
 import '@fontsource/dm-mono/500.css'
 import './styles/theme.css'
 import App from './App.jsx'
+import { useAuth, useMyKitchen } from './store/index.js'
+import { seedPilotMenu } from './lib/myKitchen.js'
+
+// Pilot cooks always open the app in Cook mode (they can switch to Eat mode in Profile),
+// and pick up any dishes added to their menu in src/data/cooks.js since last time.
+if (useAuth.getState().user?.kitchenId && useMyKitchen.getState().kitchen) {
+  useMyKitchen.getState().setMode('cook')
+  seedPilotMenu()
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

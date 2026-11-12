@@ -11,7 +11,7 @@ import { useNow } from '../hooks/index.js'
 import { kitchenById } from '../services/api.js'
 import { requestTag, useRequests } from '../store/requests.js'
 import { useAuth, useOrders } from '../store/index.js'
-import { clock, dayLabel, rupees } from '../lib/format.js'
+import { clock, dayLabel, ownerFirst, pickupPlace, rupees } from '../lib/format.js'
 import SlideToConfirm from './SlideToConfirm.jsx'
 
 const when = (t) => `${dayLabel(t).toLowerCase()} ${clock(t)}`
@@ -162,7 +162,7 @@ export default function RequestChat() {
         {asCook && request.status === 'ready' && <NoticeBar color="info" content={`Waiting for ${request.buyer.name.split(' ')[0]} to pick up from your door.`} />}
 
         {/* Buyer */}
-        {!asCook && request.status === 'open' && <div className="muted" style={{ fontSize: 12 }}>Waiting for {kitchen?.owner?.split(' ')[0] ?? 'the cook'} to send a price…</div>}
+        {!asCook && request.status === 'open' && <div className="muted" style={{ fontSize: 12 }}>Waiting for {ownerFirst(kitchen)} to send a price…</div>}
         {!asCook && request.status === 'quoted' && (
           <SlideToConfirm label={`Slide to pay ${rupees(request.quote.price)}`} doneLabel="Paid" size="compact" onConfirm={payNow} />
         )}
@@ -171,7 +171,7 @@ export default function RequestChat() {
         )}
         {!asCook && request.status === 'ready' && order && (
           <div className="stack" style={{ gap: 8 }}>
-            <NoticeBar color="info" wrap content={<span>Ready at <b>Flat {kitchen?.flat}</b>. Pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
+            <NoticeBar color="info" wrap content={<span>Ready at <b>{pickupPlace(kitchen) ?? kitchen?.name ?? 'the kitchen'}</b>. Pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
             <Button block color="success" shape="rounded" onClick={() => pickUp(order.id)}>I’ve picked it up</Button>
           </div>
         )}

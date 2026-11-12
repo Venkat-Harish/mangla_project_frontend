@@ -4,6 +4,10 @@ import { STATUS_STEP_MS } from '../config.js'
 import { useCook } from './cook.js'
 import { useRequests } from './requests.js'
 
+// v1: the demo kitchens were replaced by the pilot kitchens (src/data/cooks.js), so
+// buyer data saved against the old kitchen ids is dropped once.
+const FRESH_V1 = (fresh) => ({ version: 1, migrate: fresh })
+
 export const useAuth = create(persist((set) => ({
   user: null,
   login: (user) => set({ user }),
@@ -25,7 +29,7 @@ export const useCart = create(persist((set, get) => ({
   }),
   setNote: (note) => set({ note }),
   clear: () => set({ kitchenId: null, qty: {}, note: '' }),
-}), { name: 'handi-cart' }))
+}), { name: 'handi-cart', ...FRESH_V1(() => ({ kitchenId: null, qty: {}, note: '' })) }))
 
 export const STATUSES = ['Paid', 'Order accepted', 'Ready for pickup', 'Picked up']
 export const ACCEPTED = 1
@@ -92,7 +96,7 @@ export const useOrders = create(persist((set, get) => ({
   markRated: (id) => set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, ratedAt: Date.now() } : o)) })),
   get: (id) => get().orders.find((o) => o.id === id),
   clearAll: () => set({ orders: [] }),
-}), { name: 'handi-orders' }))
+}), { name: 'handi-orders', ...FRESH_V1(() => ({ orders: [] })) }))
 
 // The kitchen this user runs (if they registered one) and whether they're cooking or eating.
 export const useMyKitchen = create(persist((set) => ({
@@ -109,14 +113,14 @@ export const useStories = create(persist((set) => ({
   seen: {},
   markSeen: (id) => set((s) => (s.seen[id] ? s : { seen: { ...s.seen, [id]: true } })),
   clearAll: () => set({ seen: {} }),
-}), { name: 'handi-stories' }))
+}), { name: 'handi-stories', ...FRESH_V1(() => ({ seen: {} })) }))
 
 // Reviews written by this user; merged with mock reviews on kitchen pages.
 export const useMyReviews = create(persist((set) => ({
   reviews: [],
   add: (list) => set((s) => ({ reviews: [...list, ...s.reviews] })),
   clearAll: () => set({ reviews: [] }),
-}), { name: 'handi-reviews' }))
+}), { name: 'handi-reviews', ...FRESH_V1(() => ({ reviews: [] })) }))
 
 // App preferences on this phone. theme: 'light' | 'dark' | 'system' (follows the phone).
 export const usePrefs = create(persist((set) => ({
@@ -134,4 +138,4 @@ export const usePins = create(persist((set, get) => ({
     return on
   },
   clearAll: () => set({ pins: {} }),
-}), { name: 'handi-pins' }))
+}), { name: 'handi-pins', ...FRESH_V1(() => ({ pins: {} })) }))
