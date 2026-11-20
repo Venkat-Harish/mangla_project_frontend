@@ -5,9 +5,15 @@ import { post } from './http.js'
 import { prepareMedia } from '../lib/media.js'
 import { initials } from '../lib/format.js'
 import { canReview, isRejectedStatus, orderStage, statusLabel } from '../lib/orderStatus.js'
+import { cooks, photosOf } from '../data/cooks.js'
 
 // Shown where the backend has no picture yet (dishes are seeded with images = []).
 export const PLACEHOLDER = '/logo.svg'
+
+// The backend's pilot kitchens were seeded from src/data/cooks.js, so names match. Until the backend
+// serves them, owner, cuisine, about, logo, pickup flat and dish photos come from that file.
+const pilotByName = (name) => cooks.find((c) => c.name === name) ?? null
+const pilotDishPhotos = (pilot, dishName) => photosOf(pilot?.menu.find((m) => m.name === dishName) ?? {})
 // "No closing time": orders stay open (same sentinel your own kitchen uses for "available now").
 export const NEVER = Number.MAX_SAFE_INTEGER
 
@@ -30,8 +36,9 @@ export function mapUser(u) {
   }
 }
 
-export function mapDish(d, now = Date.now()) {
-  const gallery = urls(d.images)
+export function mapDish(d, pilot = null, now = Date.now()) {
+  const uploaded = urls(d.images)
+  const gallery = uploaded.length ? uploaded : pilotDishPhotos(pilot, d.dish_name)
   const readyAt = time(d.pickup_time)
   const preorder = d.active_order_flag === 2
   return {
@@ -52,21 +59,24 @@ export function mapDish(d, now = Date.now()) {
 }
 
 export function mapKitchen(k, dishes = []) {
-  const items = dishes.map((d) => mapDish(d))
-  const cover = items.find((i) => i.gallery.length)?.photo ?? PLACEHOLDER
+  const pilot = pilotByName(k.kitchen_name)
+  const items = dishes.map((d) => mapDish(d, pilot))
+  const dishCover = items.find((i) => i.gallery.length)?.photo
   return {
     id: k.kitchen_id,
     code: k.kitchen_alphanumeric_id,
     name: k.kitchen_name,
     societyId: k.society_id,
     ownerIds: [k.user_id1, k.user_id2, k.user_id3].filter(Boolean),
-    owner: null, // not exposed by the backend yet
-    block: null,
-    flat: null,
-    cuisine: '',
-    about: '',
-    cover,
-    thumb: cover,
+    // not served by the backend yet: from src/data/cooks.js for the pilot kitchens
+    owner: pilot?.owner ?? null,
+    phone: pilot?.phone ?? null,
+    block: pilot?.block || null,
+    flat: pilot?.flat || null,
+    cuisine: pilot?.cuisine ?? '',
+    about: pilot?.about ?? '',
+    cover: dishCover ?? pilot?.logo ?? PLACEHOLDER,
+    thumb: pilot?.logo ?? dishCover ?? PLACEHOLDER,
     pinned: !!k.pinned,
     nextOpen: 'Not cooking right now',
     items,
@@ -82,7 +92,7 @@ export function mapOrder(o) {
     kitchenId: o.kitchen_id,
     kitchenName: o.kitchen_name ?? null,
     dishId: o.dish_id,
-    lines: [{ itemId: o.dish_id, name: o.dish_name ?? 'Dish', qty: o.portion_count, price: null, photo: PLACEHOLDER, readyAt: null }],
+    lines: [{ itemId: o.dish_id, name: o.dish_name ?? 'Dish', qty: o.portion_count, price: null, photo: pilotDishPhotos(pilotByName(o.kitchen_name), o.dish_name)[0] ?? PLACEHOLDER, readyAt: null }],
     total: null,
     placedAt: time(o.order_time),
     rawStatus: o.order_status,
@@ -111,9 +121,6 @@ export function mapReview(r) {
     dislikes: r.dislike_count,
   }
 }
-
-// Owner's first name when known, else the kitchen's name — for "<cook> is on it" style text.
-export const cookName = (k) => k?.owner?.split(' ')[0] ?? k?.name ?? 'the cook'
 
 export { canReview }
 

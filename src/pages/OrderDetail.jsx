@@ -3,10 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Card, Empty, Image, List, NavBar, NoticeBar, Result, Skeleton, Steps, Tag } from 'antd-mobile'
 import { CheckCircleFill, ClockCircleOutline, EnvironmentOutline } from 'antd-mobile-icons'
 import { useNow, useQueryState } from '../hooks/index.js'
-import { api, cookName, mapOrder } from '../services/api.js'
+import { api, mapOrder } from '../services/api.js'
 import { kitchenById } from '../store/catalog.js'
 import { PICKED, READY, STATUSES, isRejected, statusIndex, stepTime, useOrders } from '../store/index.js'
-import { clock, rupees } from '../lib/format.js'
+import { clock, ownerFirst, pickupPlace, rupees } from '../lib/format.js'
 import { ORDER_REFRESH_MS, isUuid, useApiOrders } from '../lib/data.js'
 import { isReviewed, rateable, statusColor, statusTagStyle } from './Orders.jsx'
 
@@ -53,7 +53,7 @@ export default function OrderDetail() {
   const kName = k?.name ?? order.kitchenName ?? 'Kitchen'
   const i = statusIndex(order, now)
   const rejected = isRejected(order)
-  const first = cookName(k ?? { name: kName })
+  const first = ownerFirst(k ?? { name: kName })
   // Orders to a kitchen run in this app wait for the cook's actions.
   const note = order.cookLinked && i === 0 ? `Waiting for ${first} to accept.` : NOTES[i]
   const readyTimes = order.lines.map((l) => l.readyAt).filter(Boolean)
@@ -95,7 +95,7 @@ export default function OrderDetail() {
         {i === READY && !rejected && (
           <>
             <NoticeBar color="info" wrap icon={<EnvironmentOutline />}
-              content={<span>Ready at <b>{k?.flat ? `Flat ${k.flat}` : kName}</b>{k?.block ? `, Block ${k.block}` : ''}. Show pickup code <b className="mono">{code}</b>.</span>} />
+              content={<span>Ready at <b>{pickupPlace(k) ?? kName}</b>. Show pickup code <b className="mono">{code}</b>.</span>} />
             {/* No backend endpoint to confirm a pickup yet: the kitchen updates backend orders. */}
             {!fromApi && <Button block size="large" color="success" onClick={() => pickUp(order.id)}>I’ve picked it up</Button>}
           </>
@@ -139,9 +139,9 @@ export default function OrderDetail() {
         </List>
 
         <List mode="card" header="Pickup from" style={{ margin: 0 }}>
-          <List.Item prefix={<EnvironmentOutline />} description={[k?.block && `Block ${k.block}`, k?.owner].filter(Boolean).join(' · ') || null}
+          <List.Item prefix={<EnvironmentOutline />} description={[pickupPlace(k), k?.owner].filter(Boolean).join(' · ') || null}
             arrow onClick={() => navigate(`/kitchen/${order.kitchenId}`)}>
-            {kName}{k?.flat ? `, Flat ${k.flat}` : ''}
+            {kName}
           </List.Item>
         </List>
 

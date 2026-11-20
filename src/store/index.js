@@ -4,6 +4,10 @@ import { STATUS_STEP_MS } from '../config.js'
 import { useCook } from './cook.js'
 import { useRequests } from './requests.js'
 
+// v1: the demo kitchens were replaced by the pilot kitchens (src/data/cooks.js), so
+// buyer data saved against the old kitchen ids is dropped once.
+const FRESH_V1 = (fresh) => ({ version: 1, migrate: fresh })
+
 export const useAuth = create(persist((set) => ({
   user: null,
   login: (user) => set({ user }),
@@ -113,7 +117,7 @@ export const useStories = create(persist((set) => ({
   seen: {},
   markSeen: (id) => set((s) => (s.seen[id] ? s : { seen: { ...s.seen, [id]: true } })),
   clearAll: () => set({ seen: {} }),
-}), { name: 'handi-stories' }))
+}), { name: 'handi-stories', ...FRESH_V1(() => ({ seen: {} })) }))
 
 // Reviews of local demo orders (checkout is simulated on this phone); merged with backend reviews.
 export const useMyReviews = create(persist((set) => ({

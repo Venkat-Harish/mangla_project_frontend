@@ -44,6 +44,7 @@ function Availability({ dish }) {
   const bounds = useMemo(() => ({ min: new Date(), max: new Date(Date.now() + 3 * 86400000) }), [])
 
   const save = () => {
+    if (dish.price == null) return Toast.show({ content: 'Set a price for this dish first' })
     if (portions < stats.ordered) return Toast.show({ content: `You’ve already accepted ${stats.ordered} portions` })
     if (kind === 'preorder') {
       if (closesAt <= Date.now()) return Toast.show({ content: 'Orders must close in the future' })
@@ -118,7 +119,7 @@ export default function Dish() {
     useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
   )
 
-  useEffect(() => { if (dish) form.setFieldsValue({ name: dish.name, desc: dish.desc, price: String(dish.price) }) }, [dish?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (dish) form.setFieldsValue({ name: dish.name, desc: dish.desc, price: dish.price == null ? '' : String(dish.price) }) }, [dish?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isNew && !dish) return <><NavBar onBack={() => navigate('/cook', { replace: true })}>Dish</NavBar><Empty description="This dish was deleted." /></>
 

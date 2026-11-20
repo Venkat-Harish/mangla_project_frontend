@@ -3,7 +3,7 @@ export const APP_NAME = 'Handi'
 export const APP_WORDMARK = 'handi'
 export const APP_TAGLINE = 'Home kitchens of your society, one door away.'
 
-// Temporary login: every provider "sends" this code.
+// Temporary phone login: every number "gets" this code.
 export const DEMO_OTP = '123456'
 
 // The backend has no login yet: after the OTP, the app signs in as this user (a users.user_id).

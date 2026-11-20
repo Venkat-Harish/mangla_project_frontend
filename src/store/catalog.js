@@ -65,6 +65,6 @@ function reorder(order, byId, id, on) {
 }
 
 // Synchronous lookup for places that already hold an id (cart, orders, chats).
-// Includes your own kitchen (cook mode) so cart/orders/reviews work for it too.
+// Your own kitchen (cook mode) wins, so cart/orders/reviews show your live menu.
 export const kitchenById = (id) =>
-  useCatalog.getState().byId[id] ?? (isMyKitchenId(id) ? myBuyerKitchenNow() : null)
+  (isMyKitchenId(id) ? myBuyerKitchenNow() : null) ?? useCatalog.getState().byId[id] ?? null

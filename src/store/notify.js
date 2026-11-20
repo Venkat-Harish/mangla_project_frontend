@@ -20,4 +20,4 @@ export const useNotify = create(persist((set, get) => ({
   },
   dismiss: (key, since) => set((s) => ({ dismissed: { ...s.dismissed, [key]: since } })),
   clearAll: () => set({ subs: {}, dismissed: {} }),
-}), { name: 'handi-notify' }))
+}), { name: 'handi-notify', version: 1, migrate: () => ({ subs: {}, dismissed: {} }) }))

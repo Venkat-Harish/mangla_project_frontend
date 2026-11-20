@@ -7,7 +7,7 @@ import { useNow, useQueryState } from '../hooks/index.js'
 import { api } from '../services/api.js'
 import { PICKED, READY, STATUSES, isRejected, statusIndex, useAuth } from '../store/index.js'
 import { kitchenById, useCatalog } from '../store/catalog.js'
-import { clock } from '../lib/format.js'
+import { clock, pickupPlace } from '../lib/format.js'
 import { summarizeReviews } from '../lib/ratings.js'
 import { useAllOrders, useKitchenReviews } from '../lib/data.js'
 import { useNotify } from '../store/notify.js'
@@ -27,10 +27,13 @@ export default function Home() {
   const myKitchen = useMyBuyerKitchen()
   const myStories = useMyStoryGroup(myKitchen)
   // Pinned kitchens first (in the order you pinned them, kept on the server), then your kitchen, then the rest.
+  // A pilot cook's kitchen is already on the backend, and that's the one buyers see: the local copy isn't added again.
   const kitchens = useMemo(() => {
     if (!loaded) return null
     const list = order.map((id) => byId[id]).filter(Boolean)
-    return [...list.filter((k) => k.pinned), ...(myKitchen?.hasDishes ? [myKitchen] : []), ...list.filter((k) => !k.pinned)]
+    const mineListed = !!myKitchen && list.some((k) => k.name === myKitchen.name)
+    const mine = myKitchen?.hasDishes && !mineListed ? [myKitchen] : []
+    return [...list.filter((k) => k.pinned), ...mine, ...list.filter((k) => !k.pinned)]
   }, [loaded, order, byId, myKitchen])
   const pinnedList = (kitchens ?? []).filter((k) => k.pinned)
   const pinnedCount = pinnedList.length
@@ -82,7 +85,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="pad row muted" style={{ gap: 4, fontSize: 12, marginTop: 4 }}><EnvironmentOutline /> {[user.society, user.flat].filter(Boolean).join(' · ')}</div>
+      <div className="pad row muted" style={{ gap: 4, fontSize: 12, marginTop: 4 }}><EnvironmentOutline /> {user.society}{user.flat ? ` · ${user.flat}` : ''}</div>
 
       {alerts.map((a) => (
         <div key={a.key} className="pad" style={{ marginTop: 10 }}>
@@ -190,7 +193,7 @@ function KitchenTile({ kitchen: k, now, onOpen, onPin }) {
             <span className="mono" style={{ fontSize: 12 }}>{rs.avg.toFixed(1)}</span>
           </div>
         ) : <div className="row" style={{ marginTop: 6 }}><Tag round fill="outline" color="default" style={{ '--text-color': 'var(--ink-2)' }}>New</Tag></div>}
-        {(k.block || k.flat) && <div className="mono faint" style={{ fontSize: 12, marginTop: 2 }}>{[k.block && `Block ${k.block}`, k.flat].filter(Boolean).join(' · ')}</div>}
+        {pickupPlace(k) && <div className="mono faint" style={{ fontSize: 12, marginTop: 2 }}>{pickupPlace(k)}</div>}
       </div>
     </Card>
   )

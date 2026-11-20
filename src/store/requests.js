@@ -3,11 +3,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { kitchens, neighbours } from '../data/mock.js'
+import { isMyKitchenId } from '../lib/myKitchen.js'
 
 const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)]
 const msg = (from, text, extra = {}) => ({ id: uid('m'), from, type: 'text', text, at: Date.now(), ...extra })
-const isMock = (kitchenId) => kitchens.some((k) => k.id === kitchenId)
+// Listed kitchens other than your own get a simulated cook on the other end of the chat.
+const isMock = (kitchenId) => !isMyKitchenId(kitchenId) && kitchens.some((k) => k.id === kitchenId)
 
 export const REQUEST_TAG = {
   open: ['Waiting for quote', 'default'],
@@ -107,4 +109,9 @@ export const useRequests = create(persist((set, get) => ({
   },
 
   clearAll: () => set({ requests: [] }),
-}), { name: 'handi-requests' }))
+}), {
+  name: 'handi-requests',
+  // v1: the demo kitchens were replaced by the pilot kitchens; old threads point nowhere.
+  version: 1,
+  migrate: () => ({ requests: [] }),
+}))

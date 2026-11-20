@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Dialog, Divider, Ellipsis, Empty, Form, Image, ImageViewer, NavBar, Popup, Rate, Skeleton, Stepper, Tabs, Tag, TextArea, Toast } from 'antd-mobile'
 import { BellOutline, ClockCircleOutline, CloseOutline, EditSOutline, StarFill, EnvironmentOutline, FireFill, PlayOutline, RightOutline, SoundOutline } from 'antd-mobile-icons'
 import { useNow } from '../hooks/index.js'
-import { NEVER, cookName } from '../services/api.js'
+import { NEVER } from '../services/api.js'
 import { useAuth, useCart } from '../store/index.js'
 import { kitchenById, useCatalog } from '../store/catalog.js'
 import { useRequests } from '../store/requests.js'
-import { clock, closing, dayLabel, rupees, timeAgo } from '../lib/format.js'
+import { clock, closing, dayLabel, ownerFirst, pickupPlace, rupees, timeAgo } from '../lib/format.js'
 import { summarizeReviews } from '../lib/ratings.js'
 import { useKitchenReviews } from '../lib/data.js'
 import { useNotify } from '../store/notify.js'
@@ -102,9 +102,9 @@ export default function Kitchen() {
         {(kitchen.owner || kitchen.cuisine) && (
           <div className="italic muted" style={{ fontSize: 15, marginTop: 2 }}>{[kitchen.owner && `by ${kitchen.owner}`, kitchen.cuisine].filter(Boolean).join(' · ')}</div>
         )}
-        {(kitchen.block || kitchen.flat) && (
+        {pickupPlace(kitchen) && (
           <div className="row muted" style={{ gap: 6, marginTop: 10, fontSize: 13 }}>
-            <EnvironmentOutline /> <span>{[kitchen.block && `Block ${kitchen.block}`, kitchen.flat && `Flat ${kitchen.flat}`, user.society].filter(Boolean).join(' · ')}</span>
+            <EnvironmentOutline /> <span>{pickupPlace(kitchen)} · {user.society}</span>
           </div>
         )}
         {kitchen.about && <p style={{ margin: '10px 0 0', fontSize: 14 }}>{kitchen.about}</p>}
@@ -115,7 +115,7 @@ export default function Kitchen() {
             <span className="icon"><EditSOutline /></span>
             <div style={{ flex: 1 }}>
               <b>Want something special?</b>
-              <div className="muted" style={{ fontSize: 12 }}>Request a custom order — {cookName(kitchen)} will reply with a price</div>
+              <div className="muted" style={{ fontSize: 12 }}>Request a custom order — {ownerFirst(kitchen)} will reply with a price</div>
             </div>
             <RightOutline />
           </div>
@@ -125,7 +125,7 @@ export default function Kitchen() {
       <Popup visible={customOpen} onMaskClick={() => setCustomOpen(false)} showCloseButton onClose={() => setCustomOpen(false)}>
         <div style={{ padding: '20px 4px 24px' }}>
           <h2 className="h1 pad">Custom order</h2>
-          <div className="pad muted" style={{ fontSize: 13, marginTop: 4 }}>Tell {cookName(kitchen)} exactly what you’d like. You’ll chat here and get a price before paying.</div>
+          <div className="pad muted" style={{ fontSize: 13, marginTop: 4 }}>Tell {ownerFirst(kitchen)} exactly what you’d like. You’ll chat here and get a price before paying.</div>
           <Form form={customForm} layout="vertical" requiredMarkStyle="none" initialValues={{ portions: 2 }}
             onFinish={(v) => {
               const rid = createRequest({ kitchenId: kitchen.id, buyer: { name: user.name, flat: user.flat, you: true }, text: v.text.trim(), portions: v.portions })

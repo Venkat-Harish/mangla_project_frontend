@@ -87,7 +87,7 @@ export default function RegisterKitchen() {
 
         <Form.Item label="Pickup from" disabled>
           <div className="row muted" style={{ gap: 6 }}>
-            <EnvironmentOutline /> Flat {user.flat}, Block {user.block}, {user.society}
+            <EnvironmentOutline /> {user.flat ? `Flat ${user.flat}, ` : ''}{user.block ? `Block ${user.block}, ` : ''}{user.society}
           </div>
         </Form.Item>
       </Form>

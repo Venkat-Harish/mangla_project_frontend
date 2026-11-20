@@ -52,7 +52,7 @@ export default function Dishes() {
                     <div className="h2">{d.name}</div>
                     <RightOutline style={{ flex: '0 0 auto', marginTop: 4 }} />
                   </div>
-                  <div className="mono muted" style={{ fontSize: 13, marginTop: 2 }}>{rupees(d.price)} / portion</div>
+                  <div className="mono muted" style={{ fontSize: 13, marginTop: 2 }}>{d.price == null ? 'Set a price' : `${rupees(d.price)} / portion`}</div>
                   <Tag round className={`avail-tag ${a.kind}`} style={{ marginTop: 8 }}>{a.label}</Tag>
                   {d.live && (
                     <div className="mono" style={{ fontSize: 13, marginTop: 6, color: s.left <= 0 ? 'var(--chilli)' : 'var(--ink)' }}>
