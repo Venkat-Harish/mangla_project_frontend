@@ -12,7 +12,7 @@ export const useAuth = create(persist((set) => ({
   user: null,
   login: (user) => set({ user }),
   logout: () => set({ user: null }),
-}), { name: 'handi-auth' }))
+}), { name: 'handi-auth', version: 2, migrate: () => ({ user: null }) })) // v2: users come from the backend
 
 // One kitchen per cart, because pickup happens at one door.
 export const useCart = create(persist((set, get) => ({
@@ -29,7 +29,7 @@ export const useCart = create(persist((set, get) => ({
   }),
   setNote: (note) => set({ note }),
   clear: () => set({ kitchenId: null, qty: {}, note: '' }),
-}), { name: 'handi-cart', ...FRESH_V1(() => ({ kitchenId: null, qty: {}, note: '' })) }))
+}), { name: 'handi-cart', version: 2, migrate: () => ({ kitchenId: null, qty: {}, note: '' }) })) // v2: backend dish ids
 
 export const STATUSES = ['Paid', 'Order accepted', 'Ready for pickup', 'Picked up']
 export const ACCEPTED = 1
@@ -44,6 +44,7 @@ const linkedLines = (order) => (order.cookLinked ? useCook.getState().incoming.f
 
 // The kitchen turned every line of this order down (it's refunded).
 export function isRejected(order) {
+  if (order.source === 'api') return order.rejected
   const lines = linkedLines(order)
   return lines.length > 0 && lines.every((l) => l.status === 'rejected')
 }
@@ -54,7 +55,9 @@ export function isRejected(order) {
 const REQUEST_STAGE = { paid: ACCEPTED, ready: READY, picked: PICKED }
 const requestOf = (order) => (order.requestId ? useRequests.getState().requests.find((r) => r.id === order.requestId) : null)
 
+// Backend orders (source 'api') carry their stage, mapped from order_status (lib/orderStatus.js).
 export function statusIndex(order, now = Date.now()) {
+  if (order.source === 'api') return order.stage
   if (order.pickedUpAt) return PICKED
   if (order.requestId) return REQUEST_STAGE[requestOf(order)?.status] ?? ACCEPTED
   if (order.cookLinked) {
@@ -65,6 +68,7 @@ export function statusIndex(order, now = Date.now()) {
   return Number.isFinite(i) ? Math.max(0, Math.min(READY, i)) : 0
 }
 export function stepTime(order, i) {
+  if (order.source === 'api') return i === 0 ? order.placedAt : null // only the order time is known
   if (i === PICKED) return order.pickedUpAt
   if (order.requestId) { const r = requestOf(order); return [order.placedAt, r?.paidAt, r?.readyAt][i] ?? null }
   if (order.cookLinked) return i === 0 ? order.placedAt : Math.max(...linkedLines(order).map((l) => l[STAGE_TIME[i]] ?? 0)) || null
@@ -96,7 +100,7 @@ export const useOrders = create(persist((set, get) => ({
   markRated: (id) => set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, ratedAt: Date.now() } : o)) })),
   get: (id) => get().orders.find((o) => o.id === id),
   clearAll: () => set({ orders: [] }),
-}), { name: 'handi-orders', ...FRESH_V1(() => ({ orders: [] })) }))
+}), { name: 'handi-orders', version: 2, migrate: () => ({ orders: [] }) })) // v2: drops orders from mock kitchens
 
 // The kitchen this user runs (if they registered one) and whether they're cooking or eating.
 export const useMyKitchen = create(persist((set) => ({
@@ -115,12 +119,12 @@ export const useStories = create(persist((set) => ({
   clearAll: () => set({ seen: {} }),
 }), { name: 'handi-stories', ...FRESH_V1(() => ({ seen: {} })) }))
 
-// Reviews written by this user; merged with mock reviews on kitchen pages.
+// Reviews of local demo orders (checkout is simulated on this phone); merged with backend reviews.
 export const useMyReviews = create(persist((set) => ({
   reviews: [],
   add: (list) => set((s) => ({ reviews: [...list, ...s.reviews] })),
   clearAll: () => set({ reviews: [] }),
-}), { name: 'handi-reviews', ...FRESH_V1(() => ({ reviews: [] })) }))
+}), { name: 'handi-reviews', version: 2, migrate: () => ({ reviews: [] }) }))
 
 // App preferences on this phone. theme: 'light' | 'dark' | 'system' (follows the phone).
 export const usePrefs = create(persist((set) => ({
@@ -128,7 +132,7 @@ export const usePrefs = create(persist((set) => ({
   setTheme: (theme) => set({ theme }),
 }), { name: 'handi-prefs' }))
 
-// Favourite kitchens. A pinned kitchen sits first on Home, and so do its stories.
+// Favourite kitchens, kept on this phone. EAT pages now use the backend's pins (store/catalog.js).
 export const usePins = create(persist((set, get) => ({
   pins: {},   // kitchenId -> pinned at
   isPinned: (id) => !!get().pins[id],
@@ -138,4 +142,4 @@ export const usePins = create(persist((set, get) => ({
     return on
   },
   clearAll: () => set({ pins: {} }),
-}), { name: 'handi-pins', ...FRESH_V1(() => ({ pins: {} })) }))
+}), { name: 'handi-pins', version: 2, migrate: () => ({ pins: {} }) }))

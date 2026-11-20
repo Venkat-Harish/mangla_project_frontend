@@ -1,6 +1,6 @@
 // Temporary phone login: every number "gets" the same demo OTP.
-// The pilot cooks' numbers (src/data/cooks.js) sign in to their own kitchen;
-// any other number signs in as the demo resident.
+// The pilot cooks' numbers (src/data/cooks.js) sign in to their own kitchen in Cook mode. Eat mode
+// talks to the backend as VITE_DEMO_USER_ID for everyone (see Login), until the backend has a login.
 import { DEMO_OTP } from '../config.js'
 import { demoUser, society } from '../data/mock.js'
 import { cookByPhone } from '../data/cooks.js'

@@ -1,30 +1,34 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button, Card, Dialog, Divider, Ellipsis, Empty, Form, Image, ImageViewer, NavBar, Popup, Rate, Skeleton, Stepper, Tabs, Tag, TextArea, Toast } from 'antd-mobile'
 import { BellOutline, ClockCircleOutline, CloseOutline, EditSOutline, StarFill, EnvironmentOutline, FireFill, PlayOutline, RightOutline, SoundOutline } from 'antd-mobile-icons'
-import { useNow, useQuery } from '../hooks/index.js'
-import { api, kitchenById } from '../services/api.js'
-import { useAuth, useCart, useMyReviews, usePins } from '../store/index.js'
+import { useNow } from '../hooks/index.js'
+import { NEVER } from '../services/api.js'
+import { useAuth, useCart } from '../store/index.js'
+import { kitchenById, useCatalog } from '../store/catalog.js'
 import { useRequests } from '../store/requests.js'
 import { clock, closing, dayLabel, ownerFirst, pickupPlace, rupees, timeAgo } from '../lib/format.js'
-import { dishRating, kitchenRating } from '../lib/ratings.js'
+import { summarizeReviews } from '../lib/ratings.js'
+import { useKitchenReviews } from '../lib/data.js'
 import { useNotify } from '../store/notify.js'
-import { society } from '../data/mock.js'
 import { isMyKitchenId, useMyBuyerKitchen, useMyBuyerPosts } from '../lib/myKitchen.js'
 import { MediaView, PinIcon } from './shared.jsx'
 
 export default function Kitchen() {
   const { id } = useParams()
   const navigate = useNavigate()
-  // Your own kitchen comes live from cook-mode data; the rest from the api.
+  // Your own kitchen comes live from cook-mode data; the rest from the backend catalog,
+  // refreshed on open so live dishes and portions are current.
   const isMine = isMyKitchenId(id)
   const myKitchen = useMyBuyerKitchen()
   const myPosts = useMyBuyerPosts()
-  const queried = useQuery('kitchen:' + id, () => api.getKitchen(id))
-  const queriedPosts = useQuery('posts:' + id, () => api.listPosts(id))
-  const kitchen = isMine ? myKitchen : queried
-  const posts = isMine ? myPosts : queriedPosts
-  const mine = useMyReviews((s) => s.reviews).filter((r) => r.kitchenId === id)
+  const catalogKitchen = useCatalog((s) => s.byId[id])
+  const loaded = useCatalog((s) => s.loaded)
+  useEffect(() => { if (!isMine) useCatalog.getState().load() }, [id, isMine])
+  const kitchen = isMine ? myKitchen : catalogKitchen ?? (loaded ? null : undefined)
+  // Posts have no backend endpoint yet: only your own kitchen has any.
+  const posts = isMine ? myPosts : []
+  const { reviews } = useKitchenReviews(id)
   const cart = useCart()
   const now = useNow(1000)
   const [tab, setTab] = useState('live')
@@ -33,20 +37,20 @@ export default function Kitchen() {
   const [customForm] = Form.useForm()
   const createRequest = useRequests((s) => s.create)
   const user = useAuth((s) => s.user)
-  const pinned = usePins((s) => !!s.pins[id])
-  const togglePin = usePins((s) => s.toggle)
+  const pinned = !!catalogKitchen?.pinned
+  const togglePin = useCatalog((s) => s.togglePin)
   const notifySubs = useNotify((s) => s.subs)
   const toggleNotify = useNotify((s) => s.toggle)
 
   if (kitchen === null) return <Empty description="Kitchen not found" />
   if (!kitchen) return <div className="pad" style={{ paddingTop: 24 }}><Skeleton animated style={{ height: 240, borderRadius: 18 }} /><Skeleton.Paragraph lineCount={5} animated /></div>
 
-  const rating = kitchenRating(kitchen, mine)
+  const rating = summarizeReviews(reviews)
   const offMenu = kitchen.offMenu ?? []
   const openReviews = (dish) => navigate(`/kitchen/${kitchen.id}/reviews${dish ? `?dish=${encodeURIComponent(dish)}` : ''}`)
   // Small boxed per-dish rating; tap → reviews filtered to this dish.
   const DishRating = ({ name }) => {
-    const r = dishRating(kitchen, name, mine)
+    const r = summarizeReviews(reviews, name)
     return (
       <button className="dish-rating" onClick={(e) => { e.stopPropagation(); openReviews(name) }} aria-label={`Reviews for ${name}`}>
         {r.count ? <><StarFill /> {r.avg.toFixed(1)}</> : 'New'}
@@ -61,7 +65,7 @@ export default function Kitchen() {
       const other = kitchenById(cart.kitchenId)
       const ok = await Dialog.confirm({
         title: 'Start a new cart?',
-        content: `Your cart has items from ${other.name}. Pickup happens at one kitchen, so adding from ${kitchen.name} will clear it.`,
+        content: `Your cart has items from ${other?.name ?? 'another kitchen'}. Pickup happens at one kitchen, so adding from ${kitchen.name} will clear it.`,
         confirmText: 'Start new cart', cancelText: 'Keep current cart',
       })
       if (!ok) return
@@ -80,12 +84,12 @@ export default function Kitchen() {
       <div style={{ position: 'relative' }}>
         <Image src={kitchen.cover} fit="cover" height={250} />
         <NavBar onBack={() => navigate(-1)} className="nav-overlay" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
-          right={
+          right={isMine ? null : (
             <button className={`pin-btn hero ${pinned ? 'on' : ''}`} aria-pressed={pinned} aria-label={pinned ? 'Unpin kitchen' : 'Pin kitchen'}
-              onClick={() => { const on = togglePin(kitchen.id); Toast.show({ content: on ? `Pinned — ${kitchen.name} and its stories now come first` : 'Unpinned' }) }}>
+              onClick={async () => { const on = await togglePin(kitchen.id); if (on !== null) Toast.show({ content: on ? `Pinned — ${kitchen.name} now comes first` : 'Unpinned' }) }}>
               <PinIcon on={pinned} size={18} />
             </button>
-          } />
+          )} />
       </div>
 
       <div className="kitchen-sheet">
@@ -95,11 +99,15 @@ export default function Kitchen() {
             {rating.count ? <><StarFill /> <b>{rating.avg.toFixed(1)}</b> <span>· {rating.count}</span></> : <b>New</b>}
           </button>
         </div>
-        <div className="italic muted" style={{ fontSize: 15, marginTop: 2 }}>{kitchen.owner ? `by ${kitchen.owner} · ` : ''}{kitchen.cuisine}</div>
-        <div className="row muted" style={{ gap: 6, marginTop: 10, fontSize: 13 }}>
-          <EnvironmentOutline /> <span>{pickupPlace(kitchen) ? `${pickupPlace(kitchen)} · ` : ''}{society.name}</span>
-        </div>
-        <p style={{ margin: '10px 0 0', fontSize: 14 }}>{kitchen.about}</p>
+        {(kitchen.owner || kitchen.cuisine) && (
+          <div className="italic muted" style={{ fontSize: 15, marginTop: 2 }}>{[kitchen.owner && `by ${kitchen.owner}`, kitchen.cuisine].filter(Boolean).join(' · ')}</div>
+        )}
+        {pickupPlace(kitchen) && (
+          <div className="row muted" style={{ gap: 6, marginTop: 10, fontSize: 13 }}>
+            <EnvironmentOutline /> <span>{pickupPlace(kitchen)} · {user.society}</span>
+          </div>
+        )}
+        {kitchen.about && <p style={{ margin: '10px 0 0', fontSize: 14 }}>{kitchen.about}</p>}
 
 
         <Card style={{ marginTop: 10 }} onClick={() => setCustomOpen(true)}>
@@ -158,7 +166,7 @@ export default function Kitchen() {
                   <Ellipsis className="muted" content={item.desc} rows={2} style={{ fontSize: 13, marginTop: 4 }} />
                   <div className="row" style={{ marginTop: 8 }}>
                     <span className="mono" style={{ fontWeight: 500, fontSize: 15 }}>{rupees(item.price)}</span>
-                    <span className="mono faint" style={{ fontSize: 12 }}>· {item.left} of {item.total} left</span>
+                    {item.total != null && <span className="mono faint" style={{ fontSize: 12 }}>· {isMine ? `${item.left} of ${item.total}` : item.left} left</span>}
                     <DishRating name={item.name} />
                   </div>
                 </div>
@@ -185,11 +193,13 @@ export default function Kitchen() {
                 ) : (
                   <>
                     <Tag fill="outline" color="default" round style={{ '--text-color': 'var(--ink-2)' }}>
-                      <span className="row" style={{ gap: 4 }}><FireFill /> {isMine ? 'Pre-order · ' : ''}Ready {dayLabel(item.readyAt, now).toLowerCase()} {clock(item.readyAt)}</span>
+                      <span className="row" style={{ gap: 4 }}><FireFill /> {isMine || item.preorder ? 'Pre-order · ' : ''}Ready {dayLabel(item.readyAt, now).toLowerCase()} {clock(item.readyAt)}</span>
                     </Tag>
-                    <Tag round color={c.state === 'soon' ? 'danger' : 'default'} fill={c.state === 'soon' ? 'solid' : 'outline'} style={c.state === 'soon' ? {} : { '--text-color': 'var(--ink-2)' }}>
-                      <span className="row" style={{ gap: 4 }}><ClockCircleOutline /> {c.state === 'closed' ? 'Orders closed' : `Closes ${clock(item.closesAt)} · ${c.label}`}</span>
-                    </Tag>
+                    {item.closesAt < NEVER && (
+                      <Tag round color={c.state === 'soon' ? 'danger' : 'default'} fill={c.state === 'soon' ? 'solid' : 'outline'} style={c.state === 'soon' ? {} : { '--text-color': 'var(--ink-2)' }}>
+                        <span className="row" style={{ gap: 4 }}><ClockCircleOutline /> {c.state === 'closed' ? 'Orders closed' : `Closes ${clock(item.closesAt)} · ${c.label}`}</span>
+                      </Tag>
+                    )}
                   </>
                 )}
               </div>
@@ -229,7 +239,7 @@ export default function Kitchen() {
           </>
         )}
 
-        {tab === 'posts' && (!posts ? <Skeleton.Paragraph lineCount={6} animated /> : posts.map((p) => (
+        {tab === 'posts' && (!posts ? <Skeleton.Paragraph lineCount={6} animated /> : posts.length === 0 ? <Empty description="No posts from this kitchen yet." /> : posts.map((p) => (
           <Card key={p.id} bodyStyle={{ padding: 0 }} style={p.type === 'headsup' ? { background: 'var(--turmeric-soft)', borderColor: 'var(--turmeric)' } : {}}>
             <div className="row" style={{ padding: '12px 14px', gap: 10 }}>
               <Image src={kitchen.thumb} width={32} height={32} fit="cover" style={{ borderRadius: 16 }} />

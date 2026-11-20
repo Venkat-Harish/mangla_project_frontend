@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Empty, Image, List, Stepper, Tag, TextArea, Toast } from 'antd-mobile'
 import { ClockCircleOutline, EnvironmentOutline, PayCircleOutline } from 'antd-mobile-icons'
 import { useNow } from '../hooks/index.js'
-import { kitchenById } from '../services/api.js'
+import { kitchenById, useCatalog } from '../store/catalog.js'
 import { useAuth, useCart, useOrders } from '../store/index.js'
 import { useCook } from '../store/cook.js'
 import SlideToConfirm from './SlideToConfirm.jsx'
@@ -16,7 +16,9 @@ export default function Cart() {
   const user = useAuth((s) => s.user)
   const now = useNow(5000)
   const [paying, setPaying] = useState(false)
-  const kitchen = cart.kitchenId ? kitchenById(cart.kitchenId) : null
+  // The cart lives on this phone; its kitchen and live dishes come from the backend catalog.
+  const catalogKitchen = useCatalog((s) => (cart.kitchenId ? s.byId[cart.kitchenId] : null))
+  const kitchen = cart.kitchenId ? catalogKitchen ?? kitchenById(cart.kitchenId) : null
   const lines = kitchen ? kitchen.items.filter((i) => cart.qty[i.id]) : []
 
   if (!kitchen || lines.length === 0) {

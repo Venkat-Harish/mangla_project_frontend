@@ -6,6 +6,9 @@ import { useAuth, useCart, useMyKitchen, usePrefs } from './store/index.js'
 import { useTheme } from './hooks/index.js'
 import { useCook } from './store/cook.js'
 import { useRequests } from './store/requests.js'
+import { CATALOG_REFRESH_MS, useCatalog } from './store/catalog.js'
+import { api } from './services/api.js'
+import { isUuid } from './lib/data.js'
 import RequestChat from './pages/RequestChat.jsx'
 import Login from './pages/Login.jsx'
 import Home from './pages/Home.jsx'
@@ -60,6 +63,22 @@ function Shell() {
   const pending = pendingOrders + newRequests
   // Keeps simulated cooks / neighbours in custom-order chats moving.
   useEffect(() => { const t = setInterval(() => useRequests.getState().tick(), 1000); return () => clearInterval(t) }, [])
+  // Backend data for EAT mode: the user's profile (fresh each start) and the society's kitchens.
+  // A pilot cook keeps their own name and kitchen; only the backend user's society is refreshed.
+  // (A cook signed in while the backend was unreachable has no backend id: nothing to load.)
+  const userId = isUuid(user?.id) ? user.id : null
+  useEffect(() => {
+    if (!userId) return undefined
+    api.getUser(userId)
+      .then((fresh) => {
+        const { user: u, login } = useAuth.getState()
+        if (u?.id === fresh.id) login(u.pilotCook ? { ...u, societyId: fresh.societyId } : { ...fresh, via: u.via })
+      })
+      .catch((err) => { if (err.status === 404 && !useAuth.getState().user?.pilotCook) useAuth.getState().logout() })
+    useCatalog.getState().load()
+    const t = setInterval(() => useCatalog.getState().load(), CATALOG_REFRESH_MS)
+    return () => clearInterval(t)
+  }, [userId])
   const { pathname } = useLocation()
   const navigate = useNavigate()
   if (!user) return <Navigate to="/login" replace />

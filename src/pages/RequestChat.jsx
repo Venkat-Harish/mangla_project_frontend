@@ -8,7 +8,7 @@ import { MainContainer, ChatContainer, MessageList, Message, MessageInput, Messa
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'
 import { Button, DatePicker, Dialog, Empty, Form, Input, List, NavBar, NoticeBar, Popup, Tag, TextArea, Toast } from 'antd-mobile'
 import { useNow } from '../hooks/index.js'
-import { kitchenById } from '../services/api.js'
+import { kitchenById } from '../store/catalog.js'
 import { requestTag, useRequests } from '../store/requests.js'
 import { useAuth, useOrders } from '../store/index.js'
 import { clock, dayLabel, ownerFirst, pickupPlace, rupees } from '../lib/format.js'

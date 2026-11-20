@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Button, Form, Grid, Image, Input, NoticeBar, PasscodeInput, Popup, Toast } from 'antd-mobile'
 import { PhonebookOutline } from 'antd-mobile-icons'
-import { APP_TAGLINE, APP_WORDMARK } from '../config.js'
+import { APP_TAGLINE, APP_WORDMARK, DEMO_USER_ID } from '../config.js'
+import { api } from '../services/api.js'
+import { errorText } from '../services/http.js'
 import { kitchens } from '../data/mock.js'
 import { requestOtp, tenDigits, verifyOtp } from '../services/auth.js'
 import { useAuth, useMyKitchen } from '../store/index.js'
@@ -30,21 +32,38 @@ export default function Login() {
   const verify = async (value = code) => {
     if (value.length < 6) return
     setBusy(true)
+    let otp
     try {
-      const { user, kitchen } = await verifyOtp(value, phone)
-      if (kitchen) {
-        // A pilot cook: open their own kitchen in Cook mode.
-        const mine = useMyKitchen.getState()
-        if (mine.kitchen?.id === kitchen.id) mine.update(kitchen)
-        else { useCook.getState().clearAll(); mine.register(kitchen) }
-        mine.setMode('cook')
-        seedPilotMenu()
-      }
-      Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
-      login(user)
+      otp = await verifyOtp(value, phone)
     } catch (e) {
-      setError(true); Toast.show({ icon: 'fail', content: e.message })
-    } finally { setBusy(false) }
+      setError(true); Toast.show({ icon: 'fail', content: e.message }); setBusy(false)
+      return
+    }
+    // No login endpoint yet: Eat mode talks to the backend as VITE_DEMO_USER_ID.
+    let backend = null
+    try {
+      if (!DEMO_USER_ID) throw new Error('Sign-in isn’t set up: VITE_DEMO_USER_ID is missing (see .env.example).')
+      backend = await api.getUser(DEMO_USER_ID)
+    } catch (e) {
+      const msg = e.status === 404 ? 'That account isn’t on the server.' : errorText(e)
+      // A pilot cook can still run their kitchen (Cook mode is local); everyone else needs the backend.
+      if (!otp.kitchen) { Toast.show({ icon: 'fail', content: msg }); setBusy(false); return }
+    }
+    if (otp.kitchen) {
+      // A pilot cook: open their own kitchen in Cook mode.
+      const mine = useMyKitchen.getState()
+      if (mine.kitchen?.id === otp.kitchen.id) mine.update(otp.kitchen)
+      else { useCook.getState().clearAll(); mine.register(otp.kitchen) }
+      mine.setMode('cook')
+      seedPilotMenu()
+    }
+    // Cooks keep their own name and kitchen; in Eat mode they browse and order as the backend user.
+    const user = otp.kitchen
+      ? { ...otp.user, id: backend?.id ?? otp.user.id, societyId: backend?.societyId ?? null, pilotCook: true }
+      : { ...backend, via: 'phone' }
+    Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
+    login(user)
+    setBusy(false)
   }
 
   return (

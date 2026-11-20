@@ -1,7 +1,7 @@
 // Small compositions of antd-mobile parts used on more than one page.
-import { Avatar, Card, Image, ImageViewer, List, Rate, Space, Tag } from 'antd-mobile'
+import { Avatar, Button, Card, Empty, Image, ImageViewer, List, Rate, Space, Tag } from 'antd-mobile'
 import { requestTag } from '../store/requests.js'
-import { kitchenById } from '../services/api.js'
+import { kitchenById } from '../store/catalog.js'
 import { dateTime, initials } from '../lib/format.js'
 import { useMediaUrl } from '../lib/media.js'
 
@@ -73,6 +73,16 @@ export function RequestList({ requests, asCook, onOpen, header = 'Custom request
         )
       })}
     </List>
+  )
+}
+
+// The backend couldn't be reached and there's nothing cached to show.
+export function LoadError({ what, onRetry }) {
+  return (
+    <div className="stack">
+      <Empty description={`Couldn’t load ${what}.`} />
+      <Button block onClick={onRetry}>Try again</Button>
+    </div>
   )
 }
 
