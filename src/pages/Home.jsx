@@ -57,7 +57,8 @@ export default function Home() {
   const preorderLoading = filter === 'preorder' && !!societyId && preorder.data === undefined && !preorder.error
   const { orders } = useAllOrders()
 
-  const isLive = (k) => k.items.some((i) => i.closesAt > now)
+  // Live: a dish you can order now for today. Pre-order dishes are open too, but count under Pre-order.
+  const isLive = (k) => k.items.some((i) => i.closesAt > now && !i.preorder)
   // Pre-order: kitchens /home/kitchen-preorder lists. Your own kitchen: ordering open, food handed over later.
   const hasPreorder = (k) => (k.mine ? k.items.some((i) => i.closesAt > now && !i.availableNow && i.readyAt > now) : preorderIds.has(k.id))
   const active = orders.filter((o) => statusIndex(o, now) < PICKED && !isRejected(o))
@@ -168,7 +169,14 @@ export default function Home() {
 function KitchenTile({ kitchen: k, now, onOpen, onPin }) {
   const { reviews } = useKitchenReviews(k.id)
   const rs = summarizeReviews(reviews)
-  const live = k.items.filter((i) => i.closesAt > now).length
+  const open = k.items.filter((i) => i.closesAt > now)
+  const live = open.filter((i) => !i.preorder).length
+  const pre = open.length - live
+  const items = (n) => `${n} item${n > 1 ? 's' : ''}`
+  const label = live ? `Live · ${items(live)}${pre ? ` · ${pre} pre-order` : ''}` : pre ? `Pre-order · ${items(pre)}` : k.nextOpen
+  const tagStyle = live ? {} : pre
+    ? { '--background-color': 'var(--orange-soft)', '--border-color': 'var(--turmeric)' }
+    : { background: 'var(--card)' }
   return (
     <Card className="kitchen-tile" onClick={onOpen} bodyStyle={{ padding: 0 }}>
       <div style={{ position: 'relative' }}>
@@ -178,10 +186,10 @@ function KitchenTile({ kitchen: k, now, onOpen, onPin }) {
             <PinIcon on={!!k.pinned} size={15} />
           </button>
         )}
-        <Image src={k.mine ? k.cover : k.thumb} fit="cover" height={120} style={{ opacity: live ? 1 : 0.7 }} />
+        <Image src={k.mine ? k.cover : k.thumb} fit="cover" height={120} style={{ opacity: open.length ? 1 : 0.7 }} />
         {k.mine && <Tag round style={{ position: 'absolute', bottom: 8, left: 8, '--background-color': 'var(--ink)', '--text-color': 'var(--paper)', '--border-color': 'var(--ink)' }}>Your kitchen</Tag>}
-        <Tag round color={live ? 'primary' : 'default'} style={{ position: 'absolute', top: 8, left: 8, '--text-color': 'var(--ink)', ...(live ? {} : { background: 'var(--card)' }) }}>
-          {live ? `Live · ${live} item${live > 1 ? 's' : ''}` : k.nextOpen}
+        <Tag round color={live ? 'primary' : 'default'} style={{ position: 'absolute', top: 8, left: 8, '--text-color': 'var(--ink)', ...tagStyle }}>
+          {label}
         </Tag>
       </div>
       <div style={{ padding: '10px 12px 12px' }}>

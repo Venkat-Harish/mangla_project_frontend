@@ -77,7 +77,10 @@ export default function Kitchen() {
   const cartLines = cart.kitchenId === kitchen.id ? kitchen.items.filter((i) => cart.qty[i.id]) : []
   const cartCount = cartLines.reduce((s, i) => s + cart.qty[i.id], 0)
   const cartTotal = cartLines.reduce((s, i) => s + cart.qty[i.id] * i.price, 0)
-  const liveCount = kitchen.items.filter((i) => i.closesAt > now).length
+  const open = kitchen.items.filter((i) => i.closesAt > now)
+  const liveCount = open.filter((i) => !i.preorder).length
+  const preCount = open.length - liveCount
+  const menuCounts = [liveCount && `${liveCount} live`, preCount && `${preCount} pre-order`].filter(Boolean).join(' · ') || '0 live'
 
   return (
     <div>
@@ -144,7 +147,7 @@ export default function Kitchen() {
       </Popup>
 
       <Tabs activeKey={tab} onChange={setTab} style={{ '--title-font-size': '15px', position: 'sticky', top: 0, zIndex: 4, background: 'var(--paper)' }}>
-        <Tabs.Tab title={`Menu · ${liveCount} live`} key="live" />
+        <Tabs.Tab title={`Menu · ${menuCounts}`} key="live" />
         <Tabs.Tab title={`Posts (${posts?.length ?? 0})`} key="posts" />
       </Tabs>
 
@@ -303,7 +306,7 @@ export default function Kitchen() {
             <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '60px 18px calc(28px + env(safe-area-inset-bottom, 0px))', background: 'linear-gradient(transparent, rgba(0,0,0,.75))', color: '#fff' }}>
               <div style={{ fontSize: 15 }}>{video.caption}</div>
               {!video.src && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>Video plays here once kitchens can upload clips.</div>}
-              {liveCount > 0 && (
+              {open.length > 0 && (
                 <Button size="middle" color="primary" shape="rounded" style={{ marginTop: 14 }} onClick={() => { setVideo(null); setTab('live') }}>
                   See live orders
                 </Button>
