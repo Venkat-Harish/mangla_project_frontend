@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Avatar, Button, Dialog, List, NavBar, Popup, Selector, Steps, Tag, Toast } from 'antd-mobile'
-import { ShopbagOutline, CheckShieldOutline, DownlandOutline, EditSOutline, EnvironmentOutline, PhonebookOutline, UnorderedListOutline, SendOutline, UploadOutline } from 'antd-mobile-icons'
-import { clearQueryCache, useInstallPrompt } from '../hooks/index.js'
+import { Avatar, Button, Dialog, List, NavBar, Selector, Tag, Toast } from 'antd-mobile'
+import { ShopbagOutline, CheckShieldOutline, DownlandOutline, EditSOutline, EnvironmentOutline, PhonebookOutline, UnorderedListOutline } from 'antd-mobile-icons'
+import { clearQueryCache } from '../hooks/index.js'
+import { useInstallFlow } from './install.jsx'
 import { useAuth, useCart, useMyKitchen, useMyReviews, useOrders, usePins, usePrefs, useStories } from '../store/index.js'
 import { useCatalog } from '../store/catalog.js'
 import { useAllMyReviews, useAllOrders } from '../lib/data.js'
@@ -19,19 +19,9 @@ export default function Settings() {
   // Counts: backend orders and reviews plus the demo ones kept on this phone.
   const { reviews: myReviews = [] } = useAllMyReviews()
   const { orders } = useAllOrders()
-  const { canPrompt, install, isIOS, isAndroid, standalone } = useInstallPrompt()
-  const [iosSteps, setIosSteps] = useState(false)
-  const [androidSteps, setAndroidSteps] = useState(false)
+  const { standalone, onInstall, popups } = useInstallFlow()
   const { kitchen, mode, setMode } = useMyKitchen()
   const { theme, setTheme } = usePrefs()
-
-  const onInstall = async () => {
-    if (standalone) return Toast.show({ content: `${APP_NAME} is already installed` })
-    if (canPrompt) return install()
-    if (isIOS) return setIosSteps(true)
-    if (isAndroid) return setAndroidSteps(true)
-    Toast.show({ content: 'Open this page in Chrome on Android, or Safari on iPhone, to install.' })
-  }
 
   const signOut = async () => {
     const ok = await Dialog.confirm({ content: 'Sign out? Your cart, orders and reviews on this phone will be cleared.', confirmText: 'Sign out', cancelText: 'Cancel' })
@@ -112,31 +102,7 @@ export default function Settings() {
         <Button block size="large" color="danger" fill="outline" onClick={signOut}>Sign out</Button>
       </div>
 
-      <Popup visible={iosSteps} onMaskClick={() => setIosSteps(false)} showCloseButton onClose={() => setIosSteps(false)}>
-        <div style={{ padding: '24px 20px 36px' }}>
-          <h2 className="h1">Add {APP_NAME} to your Home Screen</h2>
-          <p className="muted">Safari doesn’t show an install button, so it takes three taps:</p>
-          <Steps direction="vertical" current={3}>
-            <Steps.Step status="process" title="Tap Share" description={<span className="row" style={{ gap: 4 }}>The <UploadOutline /> icon in Safari’s toolbar</span>} />
-            <Steps.Step status="process" title="Choose “Add to Home Screen”" description="Scroll the share sheet if you don’t see it" />
-            <Steps.Step status="process" title="Tap Add" description={<span className="row" style={{ gap: 4 }}>Open {APP_NAME} from its icon <SendOutline /></span>} />
-          </Steps>
-          <Button block color="primary" size="large" onClick={() => setIosSteps(false)}>Got it</Button>
-        </div>
-      </Popup>
-
-      <Popup visible={androidSteps} onMaskClick={() => setAndroidSteps(false)} showCloseButton onClose={() => setAndroidSteps(false)}>
-        <div style={{ padding: '24px 20px 36px' }}>
-          <h2 className="h1">Install {APP_NAME} from Chrome</h2>
-          <p className="muted">Chrome didn’t offer the install pop-up this time, so add it from the menu:</p>
-          <Steps direction="vertical" current={3}>
-            <Steps.Step status="process" title="Tap ⋮" description="The three-dot menu at the top right of Chrome" />
-            <Steps.Step status="process" title="Choose “Install app”" description="On some phones it’s called “Add to Home screen”" />
-            <Steps.Step status="process" title="Tap Install" description={<span className="row" style={{ gap: 4 }}>Open {APP_NAME} from its icon <SendOutline /></span>} />
-          </Steps>
-          <Button block color="primary" size="large" onClick={() => setAndroidSteps(false)}>Got it</Button>
-        </div>
-      </Popup>
+      {popups}
     </div>
   )
 }

@@ -78,25 +78,38 @@ export const useQuery = (key, fn) => useQueryState(key, fn).data
 // Android/desktop Chrome: capture the native install prompt. iOS: no prompt, show steps instead.
 // Chrome fires `beforeinstallprompt` once, right after page load — usually before the user
 // reaches Settings — so we catch it at module load (imported from main.jsx) and keep it here.
+// Installed? Opened from the home-screen icon (standalone) is certain. In a browser tab we only know
+// if Chrome told us: `appinstalled` saves a flag, and `beforeinstallprompt` (Chrome only offers it
+// when the app isn't installed) clears it again after an uninstall. Safari never says either way.
+const INSTALLED_KEY = 'handi-installed'
+const standaloneQuery = typeof window !== 'undefined' ? window.matchMedia('(display-mode: standalone)') : null
+const isStandalone = () => !!standaloneQuery?.matches || (typeof navigator !== 'undefined' && navigator.standalone === true)
+const savedInstalled = () => { try { return localStorage.getItem(INSTALLED_KEY) === '1' } catch { return false } }
+const saveInstalled = (on) => { try { if (on) localStorage.setItem(INSTALLED_KEY, '1'); else localStorage.removeItem(INSTALLED_KEY) } catch { /* storage blocked */ } }
+export const installedHere = () => isStandalone() || savedInstalled()
+
 let deferredPrompt = null
 const installListeners = new Set()
 const notifyInstall = () => installListeners.forEach((fn) => fn(deferredPrompt))
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; notifyInstall() })
-  window.addEventListener('appinstalled', () => { deferredPrompt = null; notifyInstall() })
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; saveInstalled(false); notifyInstall() })
+  window.addEventListener('appinstalled', () => { deferredPrompt = null; saveInstalled(true); notifyInstall() })
+  standaloneQuery?.addEventListener?.('change', notifyInstall)
 }
 
 export function useInstallPrompt() {
   const [promptEvent, setPromptEvent] = useState(deferredPrompt)
-  const standalone = typeof window !== 'undefined' &&
-    (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)
+  const [, rerender] = useState(0)
+  const standalone = isStandalone()
+  const installed = installedHere()
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
   const isIOS = /iphone|ipad|ipod/i.test(ua)
   const isAndroid = /android/i.test(ua)
   useEffect(() => {
+    const listener = (evt) => { setPromptEvent(evt); rerender((n) => n + 1) }
     setPromptEvent(deferredPrompt)
-    installListeners.add(setPromptEvent)
-    return () => { installListeners.delete(setPromptEvent) }
+    installListeners.add(listener)
+    return () => { installListeners.delete(listener) }
   }, [])
   const install = async () => {
     const evt = deferredPrompt
@@ -106,7 +119,7 @@ export function useInstallPrompt() {
     deferredPrompt = null; notifyInstall()
     return choice?.outcome === 'accepted'
   }
-  return { canPrompt: !!promptEvent, install, isIOS, isAndroid, standalone }
+  return { canPrompt: !!promptEvent, install, isIOS, isAndroid, standalone, installed }
 }
 
 // Applies Light / Dark / System to <html> (our tokens + antd-mobile's own dark flag + status bar colour).
