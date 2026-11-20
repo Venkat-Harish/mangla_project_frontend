@@ -1,32 +1,34 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Card, Empty, NavBar, ProgressBar, Rate, Selector, Skeleton } from 'antd-mobile'
-import { useQuery } from '../hooks/index.js'
-import { api } from '../services/api.js'
-import { useMyReviews } from '../store/index.js'
-import { dishRating, kitchenRating } from '../lib/ratings.js'
+import { useCatalog } from '../store/catalog.js'
+import { summarizeReviews } from '../lib/ratings.js'
+import { kitchenName, useKitchenReviews } from '../lib/data.js'
 import { isMyKitchenId, useMyBuyerKitchen } from '../lib/myKitchen.js'
-import { ReviewItem } from './shared.jsx'
+import { LoadError, ReviewItem } from './shared.jsx'
 
 export default function Reviews() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const isMine = isMyKitchenId(id)
   const myKitchen = useMyBuyerKitchen()
-  const queried = useQuery('kitchen:' + id, () => api.getKitchen(id))
-  const kitchen = isMyKitchenId(id) ? myKitchen : queried
-  const base = useQuery('reviews:' + id, () => api.listReviews(id))
-  const mine = useMyReviews((s) => s.reviews).filter((r) => r.kitchenId === id)
+  const catalogKitchen = useCatalog((s) => s.byId[id])
+  const loaded = useCatalog((s) => s.loaded)
+  useEffect(() => { if (!isMine && !loaded) useCatalog.getState().load() }, [isMine, loaded])
+  // A kitchen outside your society (e.g. from My reviews) isn't in the catalog: show its reviews anyway.
+  const kitchen = isMine ? myKitchen : catalogKitchen ?? (loaded ? { id, name: kitchenName(id), items: [], offMenu: [] } : null)
+  // /review/kitchen (every dish of the kitchen) plus reviews of this phone's demo orders.
+  const { reviews: all, failed, reload } = useKitchenReviews(id)
   const [dish, setDish] = useState([params.get('dish') || 'all'])
   const [photosOnly, setPhotosOnly] = useState([])
 
-  const all = useMemo(() => [...mine, ...(base ?? [])].sort((a, b) => b.createdAt - a.createdAt), [mine, base])
-  const dishes = [...new Set([...(kitchen?.items ?? []), ...(kitchen?.offMenu ?? [])].map((d) => d.name).concat(all.map((r) => r.itemName)))]
-  const shown = all.filter((r) => (dish[0] === 'all' || r.itemName === dish[0]) && (!photosOnly.length || r.photos?.length))
+  if (!kitchen || !all) return <div className="pad" style={{ paddingTop: 20 }}><Skeleton.Title animated /><Skeleton.Paragraph lineCount={8} animated /></div>
 
-  if (!kitchen || !base) return <div className="pad" style={{ paddingTop: 20 }}><Skeleton.Title animated /><Skeleton.Paragraph lineCount={8} animated /></div>
-  // All dishes → the kitchen's weighted rating; one dish → that dish's own rating.
-  const s = dish[0] === 'all' ? kitchenRating(kitchen, mine) : dishRating(kitchen, dish[0], mine)
+  const dishes = [...new Set([...(kitchen.items ?? []), ...(kitchen.offMenu ?? [])].map((d) => d.name).concat(all.map((r) => r.itemName)))]
+  const shown = all.filter((r) => (dish[0] === 'all' || r.itemName === dish[0]) && (!photosOnly.length || r.photos?.length))
+  // All dishes → every rating of the kitchen; one dish → that dish's own rating.
+  const s = summarizeReviews(all, dish[0] === 'all' ? null : dish[0])
 
   return (
     <div>
@@ -65,7 +67,7 @@ export default function Reviews() {
           />
         </div>
 
-        {shown.length === 0 ? <Empty description="No reviews match these filters yet." /> : shown.map((r) => <ReviewItem key={r.id} review={r} />)}
+        {failed ? <LoadError what="reviews" onRetry={reload} /> : shown.length === 0 ? <Empty description="No reviews match these filters yet." /> : shown.map((r) => <ReviewItem key={r.id} review={r} />)}
       </div>
     </div>
   )

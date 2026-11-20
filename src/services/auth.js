@@ -1,5 +1,6 @@
-// Temporary login. MyGate / Google / phone all "send" the same demo OTP.
-// When going live, replace requestOtp/verifyOtp with the real MyGate flow.
+// Temporary login. MyGate / Google / phone all "send" the same demo OTP; after it, Login signs in
+// as VITE_DEMO_USER_ID from the backend. When going live, replace requestOtp/verifyOtp with the
+// real MyGate flow and a backend login that returns the user.
 import { DEMO_OTP } from '../config.js'
 import { demoUser } from '../data/mock.js'
 

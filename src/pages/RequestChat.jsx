@@ -8,7 +8,7 @@ import { MainContainer, ChatContainer, MessageList, Message, MessageInput, Messa
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css'
 import { Button, DatePicker, Dialog, Empty, Form, Input, List, NavBar, NoticeBar, Popup, Tag, TextArea, Toast } from 'antd-mobile'
 import { useNow } from '../hooks/index.js'
-import { kitchenById } from '../services/api.js'
+import { kitchenById } from '../store/catalog.js'
 import { requestTag, useRequests } from '../store/requests.js'
 import { useAuth, useOrders } from '../store/index.js'
 import { clock, dayLabel, rupees } from '../lib/format.js'
@@ -171,7 +171,7 @@ export default function RequestChat() {
         )}
         {!asCook && request.status === 'ready' && order && (
           <div className="stack" style={{ gap: 8 }}>
-            <NoticeBar color="info" wrap content={<span>Ready at <b>Flat {kitchen?.flat}</b>. Pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
+            <NoticeBar color="info" wrap content={<span>Ready at <b>{kitchen?.flat ? `Flat ${kitchen.flat}` : kitchen?.name ?? 'the kitchen'}</b>. Pickup code <b className="mono">{order.pickupCode}</b>.</span>} />
             <Button block color="success" shape="rounded" onClick={() => pickUp(order.id)}>I’ve picked it up</Button>
           </div>
         )}

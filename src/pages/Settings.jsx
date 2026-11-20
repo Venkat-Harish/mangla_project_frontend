@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar, Button, Dialog, List, NavBar, Popup, Selector, Steps, Tag, Toast } from 'antd-mobile'
 import { ShopbagOutline, CheckShieldOutline, DownlandOutline, EditSOutline, EnvironmentOutline, PhonebookOutline, UnorderedListOutline, SendOutline, UploadOutline } from 'antd-mobile-icons'
-import { useInstallPrompt } from '../hooks/index.js'
+import { clearQueryCache, useInstallPrompt } from '../hooks/index.js'
 import { useAuth, useCart, useMyKitchen, useMyReviews, useOrders, usePins, usePrefs, useStories } from '../store/index.js'
+import { useCatalog } from '../store/catalog.js'
+import { useAllMyReviews, useAllOrders } from '../lib/data.js'
 import { APP_NAME } from '../config.js'
 import { useCook } from '../store/cook.js'
 import { useRequests } from '../store/requests.js'
@@ -14,8 +16,9 @@ export default function Settings() {
   const navigate = useNavigate()
   const user = useAuth((s) => s.user)
   const logout = useAuth((s) => s.logout)
-  const myReviews = useMyReviews((s) => s.reviews)
-  const orders = useOrders((s) => s.orders)
+  // Counts: backend orders and reviews plus the demo ones kept on this phone.
+  const { reviews: myReviews = [] } = useAllMyReviews()
+  const { orders } = useAllOrders()
   const { canPrompt, install, isIOS, isAndroid, standalone } = useInstallPrompt()
   const [iosSteps, setIosSteps] = useState(false)
   const [androidSteps, setAndroidSteps] = useState(false)
@@ -34,6 +37,7 @@ export default function Settings() {
     const ok = await Dialog.confirm({ content: 'Sign out? Your cart, orders and reviews on this phone will be cleared.', confirmText: 'Sign out', cancelText: 'Cancel' })
     if (!ok) return
     useCart.getState().clear(); useOrders.getState().clearAll(); useMyReviews.getState().clearAll(); useStories.getState().clearAll(); useMyKitchen.getState().clearAll(); useCook.getState().clearAll(); useRequests.getState().clearAll(); useNotify.getState().clearAll(); usePins.getState().clearAll(); clearMedia()
+    useCatalog.getState().clear(); clearQueryCache()
     logout()
   }
 
@@ -44,7 +48,7 @@ export default function Settings() {
         <Avatar src="" fallback={<span className="avatar-initials" style={{ fontSize: 22 }}>{user.initials}</span>} style={{ '--size': '64px', '--border-radius': '50%' }} />
         <div>
           <h1 className="h1">{user.name}</h1>
-          <div className="mono muted" style={{ fontSize: 13 }}>{user.flat} · Block {user.block}</div>
+          <div className="mono muted" style={{ fontSize: 13 }}>{[user.flat, user.block && `Block ${user.block}`].filter(Boolean).join(' · ')}</div>
           <Tag round color="success" fill="outline" style={{ marginTop: 6 }}>
             <span className="row" style={{ gap: 4 }}><CheckShieldOutline /> Verified resident</span>
           </Tag>
@@ -52,7 +56,7 @@ export default function Settings() {
       </div>
 
       <List mode="card" header="Your society" style={{ margin: '20px 16px 0' }}>
-        <List.Item prefix={<EnvironmentOutline />} description={`Flat ${user.flat}`}>{user.society}</List.Item>
+        <List.Item prefix={<EnvironmentOutline />} description={[user.block && `Block ${user.block}`, user.flat && `Flat ${user.flat}`].filter(Boolean).join(' · ') || 'Flat not set yet'}>{user.society}</List.Item>
         <List.Item prefix={<PhonebookOutline />} description={`Signed in with ${user.via === 'mygate' ? 'MyGate' : user.via === 'google' ? 'Google' : 'phone'}`}>{user.phone}</List.Item>
       </List>
 

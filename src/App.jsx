@@ -6,6 +6,8 @@ import { useAuth, useCart, useMyKitchen, usePrefs } from './store/index.js'
 import { useTheme } from './hooks/index.js'
 import { useCook } from './store/cook.js'
 import { useRequests } from './store/requests.js'
+import { CATALOG_REFRESH_MS, useCatalog } from './store/catalog.js'
+import { api } from './services/api.js'
 import RequestChat from './pages/RequestChat.jsx'
 import Login from './pages/Login.jsx'
 import Home from './pages/Home.jsx'
@@ -60,6 +62,17 @@ function Shell() {
   const pending = pendingOrders + newRequests
   // Keeps simulated cooks / neighbours in custom-order chats moving.
   useEffect(() => { const t = setInterval(() => useRequests.getState().tick(), 1000); return () => clearInterval(t) }, [])
+  // Backend data for EAT mode: the user's profile (fresh each start) and the society's kitchens.
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return undefined
+    api.getUser(userId)
+      .then((fresh) => { const { user: u, login } = useAuth.getState(); if (u?.id === fresh.id) login({ ...fresh, via: u.via }) })
+      .catch((err) => { if (err.status === 404) useAuth.getState().logout() })
+    useCatalog.getState().load()
+    const t = setInterval(() => useCatalog.getState().load(), CATALOG_REFRESH_MS)
+    return () => clearInterval(t)
+  }, [userId])
   const { pathname } = useLocation()
   const navigate = useNavigate()
   if (!user) return <Navigate to="/login" replace />

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Button, Form, Grid, Image, Input, NoticeBar, PasscodeInput, Popup, Toast } from 'antd-mobile'
 import { CheckShieldOutline, MailOutline, PhonebookOutline } from 'antd-mobile-icons'
-import { APP_TAGLINE, APP_WORDMARK } from '../config.js'
+import { APP_TAGLINE, APP_WORDMARK, DEMO_USER_ID } from '../config.js'
+import { api } from '../services/api.js'
+import { errorText } from '../services/http.js'
 import { kitchens } from '../data/mock.js'
 import { PROVIDERS, requestOtp, verifyOtp } from '../services/auth.js'
 import { useAuth } from '../store/index.js'
@@ -27,11 +29,19 @@ export default function Login() {
     if (value.length < 6) return
     setBusy(true)
     try {
-      const user = await verifyOtp(provider, value, phone)
-      Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
-      login(user)
+      await verifyOtp(provider, value, phone)
     } catch (e) {
-      setError(true); Toast.show({ icon: 'fail', content: e.message })
+      setError(true); Toast.show({ icon: 'fail', content: e.message }); setBusy(false)
+      return
+    }
+    // No login endpoint yet: the code checks out, so sign in as the configured backend user.
+    try {
+      if (!DEMO_USER_ID) throw new Error('Sign-in isn’t set up: VITE_DEMO_USER_ID is missing (see .env.example).')
+      const user = await api.getUser(DEMO_USER_ID)
+      Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
+      login({ ...user, via: provider })
+    } catch (e) {
+      Toast.show({ icon: 'fail', content: e.status === 404 ? 'That account isn’t on the server.' : errorText(e) })
     } finally { setBusy(false) }
   }
 

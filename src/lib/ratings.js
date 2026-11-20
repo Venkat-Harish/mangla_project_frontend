@@ -36,5 +36,20 @@ export function kitchenRating(kitchen, myReviews = []) {
   return summarize(dist)
 }
 
+// Rating from a list of reviews (backend reviews plus this phone's demo reviews). Every rating
+// counts once, so a kitchen's number from all its reviews is the same weighted average as above.
+// Pass a dish name to rate just that dish.
+export function summarizeReviews(reviews = [], dishName = null) {
+  const dist = [...EMPTY]
+  reviews.filter((r) => !dishName || r.itemName === dishName).forEach((r) => {
+    // 0.5★ has no bucket of its own; it counts as 1★.
+    const lo = Math.max(1, Math.floor(r.rating)), hi = Math.max(1, Math.ceil(r.rating))
+    if (!(hi <= 5)) return
+    if (lo === hi) dist[5 - lo] += 1
+    else { dist[5 - hi] += 0.5; dist[5 - lo] += 0.5 }
+  })
+  return summarize(dist)
+}
+
 // Per-dish breakdown, e.g. to show how the kitchen number is built.
 export const dishRatings = (kitchen, myReviews = []) => allDishes(kitchen).map((d) => ({ name: d.name, ...dishRating(kitchen, d.name, myReviews) }))
