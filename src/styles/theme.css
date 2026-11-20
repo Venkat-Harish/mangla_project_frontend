@@ -119,7 +119,10 @@ body .adm-passcode-input-cell { background: var(--card); }
 .story-caption { color: #fff; font-size: 16px; line-height: 22px; margin-bottom: 14px; font-weight: 500; }
 
 /* Orders · Home · Cart swipe container */
+/* clip, not hidden: a hidden box can still be scrolled by code, and CapsuleTabs' scrollIntoView on
+   the tapped filter would slide the whole Orders · Home · Cart strip sideways and leave it stuck there. */
 .sections { flex: 1; min-height: 0; }
+.adm-swiper.sections { overflow: hidden; overflow: clip; }  /* .adm-swiper too, to win over antd's own rule */
 .sections .adm-swiper-track, .sections .adm-swiper-track-inner, .sections .adm-swiper-slide, .sections .adm-swiper-item { height: 100%; }
 .sections .adm-swiper-item { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 

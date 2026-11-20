@@ -21,6 +21,7 @@ export function buildBuyerKitchen(kitchen, user, dishes, incoming, now = Date.no
       gallery: d.media.filter((m) => m.type === 'image').map((m) => m.url),
       media: d.media,
       availableNow: d.live.now,
+      preorder: !d.live.now,
       readyAt: d.live.now ? now : d.live.readyAt,
       closesAt: d.live.now ? Number.MAX_SAFE_INTEGER : d.live.closesAt,
       // Pending requests don't block buyers — the cook decides what to accept.
