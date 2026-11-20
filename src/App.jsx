@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react
 import { Swiper, TabBar } from 'antd-mobile'
 import { AppOutline, BellOutline, FileOutline, HistogramOutline, ShopbagOutline, UnorderedListOutline } from 'antd-mobile-icons'
 import { useAuth, useCart, useMyKitchen, usePrefs } from './store/index.js'
-import { useTheme } from './hooks/index.js'
+import { useInstallPrompt, useTheme } from './hooks/index.js'
 import { useCook } from './store/cook.js'
 import { useRequests } from './store/requests.js'
 import { CATALOG_REFRESH_MS, useCatalog } from './store/catalog.js'
@@ -53,6 +53,8 @@ function Sections({ paths, children }) {
   )
 }
 
+let installedSent = false
+
 function Shell() {
   const user = useAuth((s) => s.user)
   const cartCount = useCart((s) => Object.values(s.qty).reduce((a, b) => a + b, 0))
@@ -72,13 +74,26 @@ function Shell() {
     api.getUser(userId)
       .then((fresh) => {
         const { user: u, login } = useAuth.getState()
-        if (u?.id === fresh.id) login(u.pilotCook ? { ...u, societyId: fresh.societyId } : { ...fresh, via: u.via })
+        if (u?.id === fresh.id) login(u.pilotCook ? { ...u, societyId: fresh.societyId, appInstalled: fresh.appInstalled } : { ...fresh, via: u.via })
       })
       .catch((err) => { if (err.status === 404 && !useAuth.getState().user?.pilotCook) useAuth.getState().logout() })
     useCatalog.getState().load()
     const t = setInterval(() => useCatalog.getState().load(), CATALOG_REFRESH_MS)
     return () => clearInterval(t)
   }, [userId])
+  // Metrics only: once the app is installed on this phone, mark users.app_installed (at most once per start).
+  const { installed } = useInstallPrompt()
+  const appInstalled = useAuth((s) => s.user?.appInstalled)
+  useEffect(() => {
+    if (!userId || !installed || appInstalled || installedSent) return
+    installedSent = true
+    api.setAppInstalled(userId)
+      .then(() => {
+        const { user: u, login } = useAuth.getState()
+        if (u?.id === userId) login({ ...u, appInstalled: true })
+      })
+      .catch(() => { installedSent = false })
+  }, [userId, installed, appInstalled])
   const { pathname } = useLocation()
   const navigate = useNavigate()
   if (!user) return <Navigate to="/login" replace />

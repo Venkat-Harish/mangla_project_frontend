@@ -13,6 +13,7 @@ import { useAllOrders, useKitchenReviews } from '../lib/data.js'
 import { useNotify } from '../store/notify.js'
 import { StoryRow, keepTouch } from './stories.jsx'
 import { PinIcon } from './shared.jsx'
+import { InstallBanner } from './install.jsx'
 import { useMyBuyerKitchen, useMyStoryGroup } from '../lib/myKitchen.js'
 
 export default function Home() {
@@ -87,6 +88,8 @@ export default function Home() {
       </div>
 
       <div className="pad row muted" style={{ gap: 4, fontSize: 12, marginTop: 4 }}><EnvironmentOutline /> {user.society}{user.flat ? ` · ${user.flat}` : ''}</div>
+
+      <InstallBanner style={{ marginTop: 10 }} />
 
       {alerts.map((a) => (
         <div key={a.key} className="pad" style={{ marginTop: 10 }}>

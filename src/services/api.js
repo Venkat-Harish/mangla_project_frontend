@@ -33,6 +33,7 @@ export function mapUser(u) {
     societyId: u.society_id,
     society: 'Your society', // no societies table yet: only the id is known
     kitchenId: u.kitchen_id,
+    appInstalled: !!u.app_installed,
   }
 }
 
@@ -128,6 +129,8 @@ export { canReview }
 
 export const api = {
   getUser: async (userId) => mapUser(await post('/account/user-info', { user_id: userId })),
+  // Metrics only: marks users.app_installed once the app has been installed on this phone.
+  setAppInstalled: (userId) => post('/account/update-installed', { user_id: userId, installed: true }),
 
   // Pinned kitchens first, then the rest of the society; each with its live / pre-order dishes.
   listKitchens: async (user) => {

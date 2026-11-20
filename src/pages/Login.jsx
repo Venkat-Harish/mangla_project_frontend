@@ -9,6 +9,7 @@ import { requestOtp, tenDigits, verifyOtp } from '../services/auth.js'
 import { useAuth, useMyKitchen } from '../store/index.js'
 import { useCook } from '../store/cook.js'
 import { seedPilotMenu } from '../lib/myKitchen.js'
+import { resetInstallBanner } from './install.jsx'
 
 // Keep 10 digits; tolerate spaces and a pasted +91 / 91 prefix.
 const phoneDigits = (v) => { const d = v.replace(/\D/g, ''); return d.length > 10 && d.startsWith('91') ? d.slice(-10) : d.slice(0, 10) }
@@ -62,6 +63,7 @@ export default function Login() {
       ? { ...otp.user, id: backend?.id ?? otp.user.id, societyId: backend?.societyId ?? null, pilotCook: true }
       : { ...backend, via: 'phone' }
     Toast.show({ icon: 'success', content: `Welcome, ${user.name.split(' ')[0]}` })
+    resetInstallBanner() // every sign-in shows the install banner again
     login(user)
     setBusy(false)
   }
